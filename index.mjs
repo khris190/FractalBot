@@ -16,5 +16,4 @@ client.on('messageCreate', async message => {
     }
 });
 
-console.log(process.env, settings.TOKEN)
 client.login(settings.TOKEN);
