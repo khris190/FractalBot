@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 export const settings = {
     TOKEN: process.env.TOKEN,
     MESSAGES: [
