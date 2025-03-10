@@ -11,7 +11,6 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', async message => {
-    console.log(message)
     if (Math.random() < 0.4) {
         message.reply({ content: getRandomFromArr(settings.MESSAGES) });
     }
