@@ -1,15 +1,15 @@
-import js from '@eslint/js';
+import js from '@eslint/js'
 import globals from 'globals'
+import neostandard from 'neostandard'
 
-export default [
-    js.configs.recommended,
-    {
-        languageOptions: {
-            ecmaVersion: 'latest',
-            globals: { ...globals.node }
-        },
-        rules: {
-
-        },
+export default neostandard(
+  {
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: { ...globals.node }
     },
-];
+    rules: {
+
+    },
+  }
+)
