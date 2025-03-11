@@ -18,7 +18,7 @@ it's a bot literally made for a single server for fun.
 
 ### PROD
 ``` bash
-    docker build -t fractal-bot && docker run farctal-bot
+    docker build -t fractal-bot && docker run fractal-bot
 ```
 
 ### DEV
