@@ -4,6 +4,8 @@ export const settings = {
     TOKEN: process.env.TOKEN,
     MESSAGES: [
         'Fucker',
-        'White people be like'
+        'White people be like',
+        'W',
+        'Real, bestie'
     ]
 }
