@@ -3,6 +3,12 @@ import { settings } from './settings.js';
 import { getRandomFromArr } from './helpers.js';
 
 
+process.on('SIGINT', () => {
+    console.log('terminating gracefully')
+    process.exit(0)
+})
+
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 client.on('ready', () => {
