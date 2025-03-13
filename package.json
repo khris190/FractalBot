@@ -1,10 +1,10 @@
 {
   "name": "discord_bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "ts-node index.ts"
   },
   "type": "module",
   "author": "",
@@ -12,7 +12,8 @@
   "description": "",
   "dependencies": {
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
