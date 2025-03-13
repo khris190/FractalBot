@@ -10,6 +10,7 @@ export const settings = {
     'Reminds me of high school',
     'Fake',
     ':(',
+    ':)',
     'Disco Elysium'
   ]
 }
