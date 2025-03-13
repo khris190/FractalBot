@@ -6,6 +6,10 @@ export const settings = {
     'Fucker',
     'White people be like',
     'W',
-    'Real, bestie'
+    'Real, bestie',
+    'Reminds me of high school',
+    'Fake',
+    ':(',
+    'Disco Elysium'
   ]
 }
