@@ -1,4 +1,4 @@
-import Client from 'src/Client'
+import Client from './src/Client'
 
 const interruptCodes = ['SIGTERM', 'SIGINT']
 interruptCodes.forEach((code) => {

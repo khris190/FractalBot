@@ -6,8 +6,6 @@
     "module": "commonjs",
     "rootDir": "./",
     "moduleResolution": "node10",
-    "baseUrl": "./",
-    "paths": {},
     "rewriteRelativeImportExtensions": false,
     "allowJs": true,
     "checkJs": true,
