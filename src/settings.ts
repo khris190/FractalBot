@@ -3,7 +3,7 @@ import 'dotenv/config'
 export const settings = {
   TOKEN: process.env.TOKEN,
   RANDOM_MESSAGES: {
-    CHANCE: 0.011,
+    CHANCE: 0.004,
     MESSAGES: [
       'Fucker',
       'White people be like',
