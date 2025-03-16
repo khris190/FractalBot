@@ -10,7 +10,7 @@ export default class Client {
     this.client.on('ready', () => {
       if (this.client.user) {
         console.log(`Logged in as ${this.client.user.tag}!`)
-        this.client.user.setActivity('Burning The Fucking Casino Down')
+        this.client.user.setActivity('M*th')
       } else {
         throw new Error('Unable to log in.')
       }
