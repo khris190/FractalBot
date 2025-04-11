@@ -7,7 +7,7 @@ export const settings = {
     MESSAGES: [
       'Fucker',
       'White people be like',
-      'W',
+      'nice',
       'Real, bestie',
       'Reminds me of high school',
       'Fake',
