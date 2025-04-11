@@ -9,9 +9,15 @@ export default function handleRandomResponses (message: OmitPartialGroupDMChanne
 }
 
 export function handleSpecyficResponses (message: OmitPartialGroupDMChannel<Message<boolean>>) {
-  if (message.content.toLowerCase() === 'w') {
-    message.reply('fucker')
-    return true
+  for (const [key, val] of Object.entries(settings.MESSAGE_RESPONSES)) {
+    if (Array.isArray(val)) {
+      if (message.content.toLowerCase() === key.toLowerCase()) {
+        message.reply({
+          content: getRandomFromArr(val)
+        })
+        return true
+      }
+    }
   }
   return false
 }

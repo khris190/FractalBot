@@ -15,5 +15,13 @@ export const settings = {
       ':)',
       'Disco Elysium'
     ]
+  },
+  MESSAGE_RESPONSES: {
+    w: ['fucker',
+      'Fucker',
+      'Fucker.',
+      'fucker!',
+      'Fucker!',
+      'fucker....']
   }
 }
