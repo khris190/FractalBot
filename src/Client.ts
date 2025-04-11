@@ -1,6 +1,6 @@
 import { Client as DiscordClient, GatewayIntentBits } from 'discord.js'
 import { settings } from './settings'
-import handleRandomResponses from './messages'
+import handleRandomResponses, { handleSpecyficResponses } from './messages'
 
 export default class Client {
   client
@@ -17,6 +17,7 @@ export default class Client {
     })
 
     this.client.on('messageCreate', async message => {
+      handleSpecyficResponses(message)
       handleRandomResponses(message)
     })
   }
