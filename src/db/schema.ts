@@ -1,8 +1,15 @@
-import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { text, int, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
-export const usersTable = sqliteTable('users_table', {
+export const imageChannels = sqliteTable('imageChannels', {
   id: int().primaryKey({ autoIncrement: true }),
-  name: text().notNull(),
-  age: int().notNull(),
-  email: text().notNull().unique(),
-})
+  channelId: int().notNull(),
+  updatedAt: text('updatedAt')
+    .notNull()
+    .$onUpdate(() => sql`(current_timestamp)`),
+  createdAt: text('createdAt')
+    .notNull()
+    .default(sql`(current_timestamp)`),
+}, (table) => [
+  uniqueIndex('channelIdx').on(table.channelId)
+])

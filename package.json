@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@libsql/client": "^0.15.4",
+    "better-sqlite3": "^11.9.1",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.43.1",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/mysql": "^2.15.27",
     "@types/node": "^22.13.4",
     "@typescript-eslint/parser": "^8.24.0",

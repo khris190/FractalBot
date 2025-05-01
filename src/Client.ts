@@ -1,6 +1,9 @@
 import { Client as DiscordClient, GatewayIntentBits } from 'discord.js'
 import handleRandomResponses, { handleSpecyficResponses } from './messages'
 import env from './env'
+import db from './db/db'
+import { imageChannels } from './db/schema'
+import { eq } from 'drizzle-orm'
 
 export default class Client {
   client
@@ -24,5 +27,7 @@ export default class Client {
 
   start () {
     this.client.login(env.TOKEN)
+    const x = db.select({ ajDi: imageChannels.id }).from(imageChannels).where(eq(imageChannels.id, 1))
+    console.log(x.get())
   }
 }
