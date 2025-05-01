@@ -1,6 +1,6 @@
 import { Client as DiscordClient, GatewayIntentBits } from 'discord.js'
-import { settings } from './settings'
 import handleRandomResponses, { handleSpecyficResponses } from './messages'
+import env from './env'
 
 export default class Client {
   client
@@ -23,6 +23,6 @@ export default class Client {
   }
 
   start () {
-    this.client.login(settings.TOKEN)
+    this.client.login(env.TOKEN)
   }
 }

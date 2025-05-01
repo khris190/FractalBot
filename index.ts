@@ -1,4 +1,5 @@
 import Client from './src/Client'
+import db from './src/db/db'
 
 const interruptCodes = ['SIGTERM', 'SIGINT']
 interruptCodes.forEach((code) => {
@@ -11,3 +12,7 @@ interruptCodes.forEach((code) => {
 
 const client = new Client()
 client.start()
+async function test () {
+  console.log(await db)
+}
+test()

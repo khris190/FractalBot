@@ -1,3 +1,10 @@
 services:
-  bot:
+  fractal-bot:
+    container_name: fractal-bot
     build: .
+    networks:
+      - fractal-network
+    links:
+      - fractal-mysql 
+    volumes:
+     - ./db:./db
