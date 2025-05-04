@@ -15,6 +15,7 @@ export default abstract class BaseChatCommand {
   }
 
   async execute (interaction: ChatInputCommandInteraction) {
+    this.logger.info(`${interaction.user.username} called ${this.data.name}`)
     try {
       if (interaction.guildId === env.GUILD_ID) {
         if (interaction instanceof ChatInputCommandInteraction) {

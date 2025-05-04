@@ -12,14 +12,16 @@ class ToggleImageWhitelistCommand extends AdminChatCommand {
       .from(imageChannel)
       .where(eq(imageChannel.channelId, channelId))
       .get()
+
     if (channel) {
+      this.logger.info(`Removing ${(interaction.channel as TextChannel).name} from imageChannel`)
       const delResult = await db.delete(imageChannel)
         .where(eq(imageChannel.channelId, channelId))
       if (delResult.changes) {
-        console.log(delResult)
         hiddenReply(interaction, 'Removed: ' + (interaction.channel as TextChannel).name)
       }
     } else {
+      this.logger.info(`Adding ${(interaction.channel as TextChannel).name} from imageChannel`)
       await db.insert(imageChannel).values({ channelId })
       hiddenReply(interaction, 'Added: ' + (interaction.channel as TextChannel).name)
     }
