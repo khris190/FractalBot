@@ -15,8 +15,6 @@ export default function getLogger (moduleName:string): ILogger {
 
   const targets = []
   targets.push({ stream: dailyTarget })
-  if (process.env.ENV === 'development') {
-    targets.push({ stream: Pretty({ destination: 1 }) })
-  }
+  targets.push({ stream: Pretty({ destination: 1 }) })
   return new PinoLogger(pino({}, pino.multistream(targets)))
 }
