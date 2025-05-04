@@ -7,5 +7,4 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     npm ci --omit=dev
 COPY --chown=node:node . .
 USER node
-RUN npx drizzle-kit migrate 
 CMD [ "npm", "run", "start"]
