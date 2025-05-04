@@ -4,3 +4,4 @@ services:
     build: .
     volumes:
       - ./data:/app/data
+    user: "${UID}:${GID}"
