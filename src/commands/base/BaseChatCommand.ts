@@ -2,6 +2,7 @@ import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import env from '../../env'
 import getLogger from '../../logger/getLogger'
 import UnknownGuildError from '../../errors/UnknownGuildError'
+import client from '../../Client'
 
 const commandLogger = getLogger('commands')
 
@@ -22,6 +23,7 @@ export default abstract class BaseChatCommand {
           this.run(interaction)
         }
       } else {
+        client.client.guilds.cache.get(interaction.guildId ?? '')?.leave()
         throw new UnknownGuildError()
       }
     } catch (e: any) {
