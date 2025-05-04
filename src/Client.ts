@@ -112,7 +112,9 @@ export class Client {
   async start () {
     this.logger.info('starting')
     this.client.login(env.TOKEN)
+    this.logger.info('starting2')
     this.createIntervals()
+    this.logger.info('starting3')
     await this.ready
     this.logger.info('started')
   }
