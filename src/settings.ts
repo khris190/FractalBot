@@ -1,5 +1,6 @@
 import 'dotenv/config'
 
+// TODO: move this somewhere safe
 export const settings = {
   RANDOM_MESSAGES: {
     CHANCE: 0.004,

@@ -21,7 +21,12 @@ export class Client {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
     })
     this.commands = new Collection()
+    this.logger.info('Preparing client events')
+    this.prepareClientEvents()
+    this.logger.info('Preparing commands')
     this.prepareCommands()
+    this.logger.info('Creating intrervals')
+    this.createIntervals()
   }
 
   prepareClientEvents () {
@@ -110,13 +115,8 @@ export class Client {
   }
 
   async start () {
-    this.logger.info('starting')
     this.client.login(env.TOKEN)
-    this.logger.info('starting2')
-    this.createIntervals()
-    this.logger.info('starting3')
     await this.ready
-    this.logger.info('started')
   }
 }
 
