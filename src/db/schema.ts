@@ -4,6 +4,7 @@ import { text, int, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core'
 export const imageChannel = sqliteTable('imageChannel', {
   id: int().primaryKey({ autoIncrement: true }),
   channelId: text().notNull(),
+  name: text(),
   updatedAt: text('updatedAt')
     .notNull()
     .$onUpdate(() => sql`(current_timestamp)`),
@@ -17,6 +18,7 @@ export const imageChannel = sqliteTable('imageChannel', {
 export const messageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
   id: int().primaryKey({ autoIncrement: true }),
   channelId: text().notNull(),
+  name: text(),
   updatedAt: text('updatedAt')
     .notNull()
     .$onUpdate(() => sql`(current_timestamp)`),
