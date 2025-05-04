@@ -4,4 +4,6 @@ services:
     build: .
     volumes:
       - ./data:/app/data
+    environment:
+      - DATA_PATH=/app/data
     user: "${UID}:${GID}"
