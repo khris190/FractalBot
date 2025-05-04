@@ -31,6 +31,7 @@ export class Client {
         this.ready.resolve()
         this.client.user.setActivity('M*th')
       } else {
+        this.logger.error('Unable to log in')
         this.ready.reject()
         throw new Error('Unable to log in.')
       }
@@ -110,9 +111,8 @@ export class Client {
 
   async start () {
     this.client.login(env.TOKEN)
-    await this.ready
     this.createIntervals()
   }
 }
 
-export default new Client(getLogger('Client'))
+export default new Client(getLogger('client'))
