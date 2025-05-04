@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
+import { ChatInputCommandInteraction, SlashCommandBuilder, TextChannel } from 'discord.js'
 import env from '../../env'
 import getLogger from '../../logger/getLogger'
 import UnknownGuildError from '../../errors/UnknownGuildError'
@@ -27,7 +27,11 @@ export default abstract class BaseChatCommand {
         throw new UnknownGuildError()
       }
     } catch (e: any) {
-      this.logger.error('command error', { interaction, e })
+      this.logger.error('command error', {
+        guildName: interaction.guild?.name,
+        channelName: (interaction.channel as TextChannel).name,
+        e
+      })
     }
   }
 
