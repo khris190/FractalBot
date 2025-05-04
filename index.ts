@@ -1,5 +1,7 @@
-import Client from './src/Client'
-
+import client from './src/Client'
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
+if (!existsSync('/app/data')) { mkdirSync('/app/data') }
+appendFileSync('/app/data/file.txt', 'hi')
 const interruptCodes = ['SIGTERM', 'SIGINT']
 interruptCodes.forEach((code) => {
   process.on(code, () => {
@@ -9,5 +11,4 @@ interruptCodes.forEach((code) => {
   })
 })
 
-const client = new Client()
 client.start()

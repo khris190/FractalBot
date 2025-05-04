@@ -1,3 +1,5 @@
+import { ChatInputCommandInteraction, MessageFlags } from 'discord.js'
+
 export function getRandomFromArr (arr: any[]) {
   return arr[Math.floor(Math.random() * arr.length)]
 }
@@ -30,4 +32,11 @@ export class Defer<T> extends Promise<T> {
 
 export function sleep (ms:number) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export async function hiddenReply (interaction: ChatInputCommandInteraction, message: string) {
+  await interaction.reply({
+    content: message,
+    flags: MessageFlags.Ephemeral
+  })
 }

@@ -2,3 +2,7 @@ services:
   fractal-bot:
     container_name: fractal-bot
     build: .
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATA_PATH=/app/data

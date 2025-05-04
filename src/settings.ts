@@ -22,5 +22,9 @@ export const settings = {
       'fucker!',
       'Fucker!',
       'fucker....']
-  }
+  },
+  ADMINS: [
+    '222716404871331840',
+    '817176964682874904'
+  ]
 }
