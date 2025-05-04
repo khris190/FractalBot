@@ -8,4 +8,3 @@ services:
     environment:
       - DATA_PATH=/app/data
       - LOG_PATH=/app/logs
-    user: "${UID}:${GID}"
