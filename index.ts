@@ -10,5 +10,6 @@ interruptCodes.forEach((code) => {
     process.exit(0)
   })
 })
-
-client.start()
+try {
+  client.start()
+} catch (e:any) { logger.error('ERROR STARTING', e) }
