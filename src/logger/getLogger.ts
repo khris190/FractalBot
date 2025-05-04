@@ -1,4 +1,4 @@
-import { pino } from 'pino'
+import { DestinationStream, Level, pino, StreamEntry } from 'pino'
 
 import ILogger from './ILogger'
 import PinoLogger from './PinoLogger'
@@ -13,28 +13,26 @@ export default function getLogger (moduleName:string): ILogger {
     mkdir: true,
   })
 
-  const targets = []
-  const pinoOptions = {
-    level: 'trace',
-    customLevels: {
-      notice: 25
-    }
+  const targets:(DestinationStream | StreamEntry<string>)[] = []
+  const customLevels = {
+    notice: 25
   }
   targets.push({
     stream: dailyTarget,
-    ...pinoOptions,
-    level: 'info'
+    level: 'info',
+
   })
   targets.push({
     stream: Pretty({
       destination: 1,
     }),
-    ...pinoOptions,
+    level: 'trace',
   })
   return new PinoLogger(
     pino(
       {
-        ...pinoOptions,
+        level: 'trace',
+        customLevels,
       },
       pino.multistream(targets)
     )
