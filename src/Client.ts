@@ -88,14 +88,14 @@ export class Client {
 
     (async () => {
       try {
-        console.log(`Started refreshing ${commands.length} application (/) commands.`)
+        this.logger.info(`Started refreshing ${commands.length} application (/) commands.`)
 
         const data = await rest.put(
           Routes.applicationCommands(env.CLIENT_ID ?? ''),
           { body: commands }
         ) as any
 
-        console.log(`Successfully reloaded ${data.length} application (/) commands.`)
+        this.logger.info(`Successfully reloaded ${data.length} application (/) commands.`)
       } catch (error) {
         // And of course, make sure you catch and log any errors!
         console.error(error)
