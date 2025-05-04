@@ -1,11 +1,14 @@
-import pino from 'pino'
+import { Logger } from 'pino'
 import ILogger from './ILogger'
 
 export default class PinoLogger implements ILogger {
-  pinoLogger: pino.Logger
-
-  constructor (pinoLogger:pino.Logger) {
+  pinoLogger
+  constructor (pinoLogger: Logger<'notice', false>) {
     this.pinoLogger = pinoLogger
+  }
+
+  isLevelEnabled (s: string): boolean {
+    return this.pinoLogger.isLevelEnabled(s)
   }
 
   debug (msg:string, obj:object) {
@@ -22,6 +25,10 @@ export default class PinoLogger implements ILogger {
 
   info (msg:string, obj:object) {
     this.pinoLogger.info(obj, msg)
+  }
+
+  notice (msg:string, obj:object) {
+    this.pinoLogger.notice(obj, msg)
   }
 
   trace (msg:string, obj:object) {

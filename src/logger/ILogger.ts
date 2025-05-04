@@ -8,6 +8,8 @@ export default interface ILogger {
 
   info (msg:string, obj?:object): void
 
+  notice (msg:string, obj?:object): void
+
   trace (msg:string, obj?:object): void
 
   warn (msg:string, obj?:object): void

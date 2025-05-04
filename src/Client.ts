@@ -21,11 +21,11 @@ export class Client {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
     })
     this.commands = new Collection()
-    this.logger.info('Preparing client events')
+    this.logger.notice('Preparing client events')
     this.prepareClientEvents()
-    this.logger.info('Preparing commands')
+    this.logger.notice('Preparing commands')
     this.prepareCommands()
-    this.logger.info('Creating intrervals')
+    this.logger.notice('Creating intrervals')
     this.createIntervals()
   }
 
