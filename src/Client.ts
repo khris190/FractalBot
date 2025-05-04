@@ -1,29 +1,33 @@
-import { Collection, Client as DiscordClient, Events, GatewayIntentBits, Interaction, MessageFlags, REST, Routes, TextChannel } from 'discord.js'
+import { Collection, Client as DiscordClient, Events, GatewayIntentBits, Interaction, MessageFlags, REST, Routes } from 'discord.js'
 import handleRandomResponses, { handleSpecyficResponses } from './messages'
 import env from './env'
 import path from 'path'
 import { readdirSync } from 'fs'
 import { Defer } from './helpers'
-import db from './db/db'
-import { imageChannel } from './db/schema'
-import { sql } from 'drizzle-orm'
+import ILogger from './logger/ILogger'
+import getLogger from './logger/getLogger'
+import RandomImageInterval from './intervals/RandomImage'
 
-class Client {
+export class Client {
   client
   commands: Collection<string, { execute: (interaction:Interaction)=>Promise<void> }>
   ready: Defer<void>
   intervals: NodeJS.Timeout[] = []
-  constructor () {
+  logger: ILogger
+  constructor (logger: ILogger) {
+    this.logger = logger
     this.ready = new Defer()
     this.client = new DiscordClient({
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
     })
     this.commands = new Collection()
     this.prepareCommands()
+  }
 
+  prepareClientEvents () {
     this.client.on('ready', () => {
       if (this.client.user) {
-        console.log(`Logged in as ${this.client.user.tag}!`)
+        this.logger.info(`Logged in as ${this.client.user.tag}!`)
         this.ready.resolve()
         this.client.user.setActivity('M*th')
       } else {
@@ -33,8 +37,12 @@ class Client {
     })
 
     this.client.on('messageCreate', async message => {
-      handleSpecyficResponses(message)
-      handleRandomResponses(message)
+      try {
+        handleSpecyficResponses(message)
+        handleRandomResponses(message)
+      } catch (e:any) {
+        this.logger.error('messageCreate error', e)
+      }
     })
 
     this.client.on(Events.InteractionCreate, async interaction => {
@@ -96,17 +104,8 @@ class Client {
   }
 
   createIntervals () {
-    this.intervals.push(setInterval(this.randomImageCallback, 60 * 1000, this))
-  }
-
-  randomImageCallback (self:any) {
-    if (Math.random() <= 0.00015) {
-      const channel = db.select().from(imageChannel).orderBy(sql`RANDOM()`).limit(1).get()
-      if (channel && self.client) {
-        const chan = self.client.channels.cache.get(channel.channelId) as TextChannel
-        chan.send({ files: [{ attachment: path.resolve(env.DATA_PATH, 'images', 'suprise.jpg') }] })
-      }
-    }
+    // TODO: this seems stupid
+    this.intervals.push(setInterval((new RandomImageInterval()).callback, 60 * 1000, this, this.logger))
   }
 
   async start () {
@@ -116,4 +115,4 @@ class Client {
   }
 }
 
-export default new Client()
+export default new Client(getLogger('Client'))

@@ -1,8 +1,13 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import env from '../../env'
+import getLogger from '../../logger/getLogger'
+import UnknownGuildError from '../../errors/UnknownGuildError'
+
+const commandLogger = getLogger('commands')
 
 export default abstract class BaseChatCommand {
   data
+  logger = commandLogger
   constructor (name:string, desc: string) {
     this.data = new SlashCommandBuilder()
       .setName(name)
@@ -10,10 +15,16 @@ export default abstract class BaseChatCommand {
   }
 
   async execute (interaction: ChatInputCommandInteraction) {
-    if (interaction.guildId === env.GUILD_ID) {
-      if (interaction instanceof ChatInputCommandInteraction) {
-        this.run(interaction)
+    try {
+      if (interaction.guildId === env.GUILD_ID) {
+        if (interaction instanceof ChatInputCommandInteraction) {
+          this.run(interaction)
+        }
+      } else {
+        throw new UnknownGuildError()
       }
+    } catch (e: any) {
+      this.logger.error('command error', { interaction, e })
     }
   }
 

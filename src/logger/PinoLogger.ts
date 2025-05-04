@@ -1,5 +1,5 @@
 import pino from 'pino'
-import ILogger from './ILogger.ts'
+import ILogger from './ILogger'
 
 export default class PinoLogger implements ILogger {
   pinoLogger: pino.Logger
