@@ -6,8 +6,6 @@ it's a bot literally made for a single server for fun.
 <!--toc:start-->
 - [Fractal bot](#fractal-bot)
   - [Running](#running)
-    - [PROD](#prod)
-    - [DEV](#dev)
 <!--toc:end-->
 
 ## Requirements
@@ -16,15 +14,7 @@ it's a bot literally made for a single server for fun.
 
 ## Running
 
-### PROD
 ``` bash
-    docker build -t fractal-bot && docker run fractal-bot
+./update.sh && ./run.sh
 ```
-
-### DEV
-
-``` bash
-    docker compose up --build
-```
-
 
