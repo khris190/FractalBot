@@ -1,5 +1,4 @@
-import { DestinationStream, Level, pino, StreamEntry } from 'pino'
-
+import { DestinationStream, pino, StreamEntry } from 'pino'
 import ILogger from './ILogger'
 import PinoLogger from './PinoLogger'
 import DailyRoll from './pino-daily-roll'
