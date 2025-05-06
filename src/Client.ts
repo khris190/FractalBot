@@ -1,5 +1,4 @@
 import { Collection, Client as DiscordClient, Events, GatewayIntentBits, Interaction, MessageFlags, REST, Routes } from 'discord.js'
-import handleRandomResponses, { handleSpecyficResponses } from './messages'
 import env from './env'
 import path from 'path'
 import { readdirSync } from 'fs'
@@ -7,6 +6,7 @@ import { Defer } from './helpers'
 import ILogger from './logger/ILogger'
 import getLogger from './logger/getLogger'
 import RandomImageInterval from './intervals/RandomImage'
+import MessageHandler from './messages'
 
 export class Client {
   client
@@ -14,6 +14,7 @@ export class Client {
   ready: Defer<void>
   intervals: NodeJS.Timeout[] = []
   logger: ILogger
+  messageHandler: MessageHandler
   constructor (logger: ILogger) {
     this.logger = logger
     this.ready = new Defer()
@@ -21,6 +22,7 @@ export class Client {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
     })
     this.commands = new Collection()
+    this.messageHandler = new MessageHandler(this.logger)
     this.logger.notice('Preparing client events')
     this.prepareClientEvents()
     this.logger.notice('Preparing commands')
@@ -44,8 +46,7 @@ export class Client {
 
     this.client.on('messageCreate', async message => {
       try {
-        handleSpecyficResponses(message)
-        handleRandomResponses(message)
+        this.messageHandler.handleMessage(message)
       } catch (e:any) {
         this.logger.error('messageCreate error', e)
       }

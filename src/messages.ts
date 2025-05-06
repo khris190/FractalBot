@@ -1,23 +1,39 @@
 import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import { settings } from './settings'
 import { getRandomFromArr } from './helpers'
+import ILogger from './logger/ILogger'
 
-export default function handleRandomResponses (message: OmitPartialGroupDMChannel<Message<boolean>>) {
-  if (Math.random() < settings.RANDOM_MESSAGES.CHANCE) {
-    message.reply({ content: getRandomFromArr(settings.RANDOM_MESSAGES.MESSAGES) })
+export default class MessageHandler {
+  logger: ILogger
+
+  constructor (logger: ILogger) {
+    this.logger = logger
   }
-}
 
-export function handleSpecyficResponses (message: OmitPartialGroupDMChannel<Message<boolean>>) {
-  for (const [key, val] of Object.entries(settings.MESSAGE_RESPONSES)) {
-    if (Array.isArray(val)) {
-      if (message.content.toLowerCase() === key.toLowerCase()) {
-        message.reply({
-          content: getRandomFromArr(val)
-        })
-        return true
-      }
+  #handleRandomResponses (message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    if (Math.random() < settings.RANDOM_MESSAGES.CHANCE) {
+      const response = getRandomFromArr(settings.RANDOM_MESSAGES.MESSAGES)
+      message.reply({ content: response })
+      this.logger.info('Replied to the message ', { author: message.author.displayName, response })
     }
   }
-  return false
+
+  #handleSpecyficResponses (message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    for (const [key, responses] of Object.entries(settings.MESSAGE_RESPONSES)) {
+      if (Array.isArray(responses)) {
+        const response = getRandomFromArr(responses)
+        if (message.content.toLowerCase() === key.toLowerCase()) {
+          message.reply({ content: response })
+          this.logger.info('Replied to the message ', { author: message.author.displayName, response })
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  handleMessage (message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    this.#handleSpecyficResponses(message)
+    this.#handleRandomResponses(message)
+  }
 }
