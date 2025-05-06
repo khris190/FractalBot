@@ -1,11 +1,18 @@
 import 'dotenv/config'
 
-// TODO: move this somewhere safe
+const fucker = ['fucker',
+  'Fucker',
+  'Fucker.',
+  'fucker!',
+  'Fucker!',
+  'fucker....']
+
+// TODO: move this somewhere safe, some messages storage
 export const settings = {
   RANDOM_MESSAGES: {
     CHANCE: 0.004,
     MESSAGES: [
-      'Fucker',
+      fucker,
       'White people be like',
       'nice',
       'Real, bestie',
@@ -13,16 +20,12 @@ export const settings = {
       'Fake',
       ':(',
       ':)',
+      'W',
       'Disco Elysium'
     ]
   },
   MESSAGE_RESPONSES: {
-    w: ['fucker',
-      'Fucker',
-      'Fucker.',
-      'fucker!',
-      'Fucker!',
-      'fucker....']
+    w: fucker
   },
   ADMINS: [
     '222716404871331840',
