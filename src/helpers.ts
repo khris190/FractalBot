@@ -18,7 +18,7 @@ export class Defer<T> extends Promise<T> {
 
   constructor () {
     let res!:(value: T | PromiseLike<T>) => void
-    let rej!:(value: T | PromiseLike<T>) => void
+    let rej!:(reason?: any) => void
 
     super((resolve, reject) => {
       res = resolve
