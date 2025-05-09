@@ -24,6 +24,7 @@ export default function getLogger (moduleName:string): ILogger {
   targets.push({
     stream: Pretty({
       destination: 1,
+      translateTime: 'yyyy-mm-dd HH:MM:ss.l'
     }),
     level: 'trace',
   })
