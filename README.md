@@ -9,12 +9,12 @@ it's a bot literally made for a single server for fun.
 <!--toc:end-->
 
 ## Requirements
+
     - node 23
     - a server (optional)
 
 ## Running
 
 ``` bash
-./update.sh && ./run.sh
+./bin/update.sh && ./bin/run.sh
 ```
-
