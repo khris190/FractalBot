@@ -10,7 +10,7 @@ it's a bot literally made for a single server for fun.
 
 ## Requirements
 
-    - node 23
+    - node 22
     - a server (optional)
 
 ## Running
