@@ -6,7 +6,10 @@ import { Defer } from './utils/helpers'
 import ILogger from './utils/logger/ILogger'
 import getLogger from './utils/logger/getLogger'
 import RandomImageInterval from './intervals/RandomImage'
-import MessageHandler from './messages'
+import PingEveryoneResponseHandler from './responses/PingEveryoneResponseHandler'
+import PingQuestionResponseHandler from './responses/PingQuestionResponseHandler'
+import SpecyficResponseHandler from './responses/SpecyficResponseHandler'
+import RandomResponseHandler from './responses/RandomResponseHandler'
 
 export class Client {
   client
@@ -14,7 +17,6 @@ export class Client {
   ready: Defer<void>
   intervals: NodeJS.Timeout[] = []
   logger: ILogger
-  messageHandler: MessageHandler
   constructor (logger: ILogger) {
     this.logger = logger
     this.ready = new Defer()
@@ -22,7 +24,6 @@ export class Client {
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
     })
     this.commands = new Collection()
-    this.messageHandler = new MessageHandler(this.logger)
     this.logger.notice('Preparing client events')
     this.prepareClientEvents()
     this.logger.notice('Preparing commands')
@@ -46,7 +47,10 @@ export class Client {
 
     this.client.on('messageCreate', async message => {
       try {
-        this.messageHandler.handleMessage(message)
+        if (PingEveryoneResponseHandler.handleMessage(message)) return
+        if (PingQuestionResponseHandler.handleMessage(message)) return
+        SpecyficResponseHandler.handleMessage(message)
+        RandomResponseHandler.handleMessage(message)
       } catch (e:any) {
         this.logger.error('messageCreate error', e)
       }
@@ -111,7 +115,7 @@ export class Client {
   }
 
   createIntervals () {
-    this.intervals.push(setInterval(() => { RandomImageInterval.callback(this, this.logger) }, 1000))
+    this.intervals.push(setInterval(() => { RandomImageInterval.callback(this, this.logger) }, 60 * 1000))
   }
 
   async start () {
