@@ -111,8 +111,7 @@ export class Client {
   }
 
   createIntervals () {
-    // TODO: this seems stupid
-    this.intervals.push(setInterval((new RandomImageInterval()).callback, 60 * 1000, this, this.logger))
+    this.intervals.push(setInterval(() => { RandomImageInterval.callback(this, this.logger) }, 1000))
   }
 
   async start () {

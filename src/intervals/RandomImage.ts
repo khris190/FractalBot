@@ -8,10 +8,12 @@ import env from '../utils/env'
 import BaseInterval from './BaseInterval'
 import ILogger from '../utils/logger/ILogger'
 
-export default class randomImageInterval extends BaseInterval {
+class RandomImageInterval extends BaseInterval {
   async run (self: Client, logger: ILogger) {
-    if (Math.random() <= 0.00025) {
+    if (Math.random() <= 0.00015) {
+      logger.info('sending the image')
       const channel = db.select().from(imageChannel).orderBy(sql`RANDOM()`).limit(1).get()
+      logger.info('to channel:', channel)
       if (channel && self.client) {
         const chan = self.client.channels.cache.get(channel.channelId) as TextChannel
         chan.send({ files: [{ attachment: path.resolve(env.DATA_PATH, 'images', 'suprise.jpg') }] })
@@ -19,3 +21,5 @@ export default class randomImageInterval extends BaseInterval {
     }
   }
 }
+const interval = new RandomImageInterval()
+export default interval

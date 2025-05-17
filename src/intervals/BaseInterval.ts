@@ -7,8 +7,8 @@ export default abstract class BaseInterval {
   callback (self:Client, logger: ILogger) {
     try {
       this.run(self, logger)
-    } catch (e) {
-
+    } catch (e: any) {
+      logger.error('', e)
     }
   }
 }
