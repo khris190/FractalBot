@@ -51,7 +51,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
         return user.id === Client.client.user?.id
       })) {
         if (message.content.includes('?')) {
-          let response = 'Currently commuting with higher power. Please wait.'
+          let response = 'Currently communing with higher power. Please wait.'
           if (this.#checkCooldown()) { response = getRandomFromArrRecursive(this.#settings.messages) }
           message.reply({ content: response })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
