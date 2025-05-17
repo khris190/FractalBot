@@ -27,6 +27,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       "Like that'll ever happen",
       "Turnips are fucking nasty if that's what you're asking",
       'Consult Romans 5:8',
+      'Consult 1 Peter 5:8',
       "The Pope is behind this but I won't say which one",
       'Chucha server error. Try again later.',
       "I'm in your walls",
