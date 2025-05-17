@@ -6,7 +6,7 @@ import Client from '../Client'
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 60 * 5,
-    cooldownMessage: 'Lemme think about it',
+    cooldownMessage: 'Lemme **think** about it',
     messages: [
       'Real',
       'Fake',
@@ -32,7 +32,25 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       "The Pope is behind this but I won't say which one",
       'Chucha server error. Try again later.',
       "I'm in your walls",
-      'Idk'
+      'Idk',
+      'Can you fucking chill?',
+      'This is SERIOUS. Quit PLAYING.',
+      'You already know',
+      '[**COGNITOHAZARD REMOVED**]',
+      "Czy wiedziałeś że do Super Combo w McDonald's możesz teraz wziąć McNuggets? Teraz dwie kanapki lub 4 McNuggets, średni napój i średnie frytki tylko za 19,99zł! (**SPONSORED**)",
+      'Fucked up in the crib playing Balala rn',
+      'Invariably indubitable althoughbeitfully plausible',
+      "Imma be honest I'm not sure on this one",
+      "I wasn't listening, can you repeat the question?",
+      'Indeed',
+      'Berg knows best',
+      'Garlic Man knows best',
+      "I don't get paid enough to be here istg",
+      "That can't be right",
+      'Sorry, reading scripture rn, can I get an Amen',
+      'Innocent until proven guilty, I say',
+      'Guilty until proven innocent, I say',
+      'Wuh?',
     ]
   }
 
