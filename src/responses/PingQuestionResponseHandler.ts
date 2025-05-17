@@ -6,6 +6,7 @@ import Client from '../Client'
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 60 * 5,
+    cooldownMessage: 'Lemme think about it',
     messages: [
       'Real',
       'Fake',
@@ -37,9 +38,9 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
 
   lastMessageTime = 0
 
-  #checkCooldown ():boolean {
+  #checkCooldown (cooldown = this.#settings.cooldownMs):boolean {
     const time = new Date().getTime()
-    if (this.lastMessageTime + this.#settings.cooldownMs < time) {
+    if (this.lastMessageTime + cooldown < time) {
       this.lastMessageTime = time
       return true
     }
@@ -52,7 +53,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
         return user.id === Client.client.user?.id
       })) {
         if (message.content.includes('?')) {
-          let response = 'Currently communing with higher power. Please wait.'
+          let response = this.#settings.cooldownMessage
           if (this.#checkCooldown()) { response = getRandomFromArrRecursive(this.#settings.messages) }
           message.reply({ content: response })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
