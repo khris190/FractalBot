@@ -46,12 +46,13 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
   }
 
   _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): boolean {
-    if (Client.client.user?.id !== message.author.id && this.#checkCooldown()) {
+    if (Client.client.user?.id !== message.author.id) {
       if (message.mentions.users.some((user, key, coll) => {
         return user.id === Client.client.user?.id
       })) {
         if (message.content.includes('?')) {
-          const response = getRandomFromArrRecursive(this.#settings.messages)
+          let response = 'Currently commuting with higher power. Please wait.'
+          if (this.#checkCooldown()) { response = getRandomFromArrRecursive(this.#settings.messages) }
           message.reply({ content: response })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
           return true
