@@ -1,12 +1,12 @@
 import { sql } from 'drizzle-orm'
 import { Client } from '../Client'
-import db from '../db/db'
-import { imageChannel } from '../db/schema'
+import db from '../utils/db/db'
+import { imageChannel } from '../utils/db/schema'
 import { TextChannel } from 'discord.js'
 import path from 'path'
-import env from '../env'
+import env from '../utils/env'
 import BaseInterval from './BaseInterval'
-import ILogger from '../logger/ILogger'
+import ILogger from '../utils/logger/ILogger'
 
 export default class randomImageInterval extends BaseInterval {
   async run (self: Client, logger: ILogger) {

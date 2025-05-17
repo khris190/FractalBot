@@ -1,5 +1,5 @@
 import { Message, OmitPartialGroupDMChannel } from 'discord.js'
-import getLogger from '../logger/getLogger'
+import getLogger from '../utils/logger/getLogger'
 
 const responseLogger = getLogger('responses')
 export default abstract class BaseResponseHandler {

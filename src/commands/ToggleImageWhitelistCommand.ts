@@ -1,9 +1,9 @@
 import { ChatInputCommandInteraction, TextChannel } from 'discord.js'
-import db from '../db/db'
-import { imageChannel } from '../db/schema'
+import db from '../utils/db/db'
+import { imageChannel } from '../utils/db/schema'
 import { eq } from 'drizzle-orm'
 import AdminChatCommand from './base/AdminChatCommand'
-import { hiddenReply } from '../helpers'
+import { hiddenReply } from '../utils/helpers'
 
 class ToggleImageWhitelistCommand extends AdminChatCommand {
   async run (interaction: ChatInputCommandInteraction): Promise<void> {

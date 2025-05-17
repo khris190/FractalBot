@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder, TextChannel } from 'discord.js'
-import env from '../../env'
-import getLogger from '../../logger/getLogger'
-import UnknownGuildError from '../../errors/UnknownGuildError'
+import env from '../../utils/env'
+import getLogger from '../../utils/logger/getLogger'
+import UnknownGuildError from '../../utils/errors/UnknownGuildError'
 import client from '../../Client'
 
 const commandLogger = getLogger('commands')

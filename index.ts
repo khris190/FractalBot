@@ -1,5 +1,5 @@
 import client from './src/Client'
-import getLogger from './src/logger/getLogger'
+import getLogger from './src/utils/logger/getLogger'
 
 const logger = getLogger('main')
 const interruptCodes = ['SIGTERM', 'SIGINT']

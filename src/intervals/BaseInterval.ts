@@ -1,5 +1,5 @@
 import { Client } from '../Client'
-import ILogger from '../logger/ILogger'
+import ILogger from '../utils/logger/ILogger'
 
 export default abstract class BaseInterval {
   abstract run (self:Client, logger:ILogger): Promise<void>

@@ -1,5 +1,5 @@
 import { OmitPartialGroupDMChannel, Message } from 'discord.js'
-import ILogger from './logger/ILogger'
+import ILogger from './utils/logger/ILogger'
 import PingEveryoneResponseHandler from './responses/PingEveryoneResponseHandler'
 import PingQuestionResponseHandler from './responses/PingQuestionResponseHandler'
 import SpecyficResponseHandler from './responses/SpecyficResponseHandler'

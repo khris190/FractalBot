@@ -2,8 +2,8 @@ import { ChatInputCommandInteraction, TextChannel } from 'discord.js'
 import AdminChatCommand from './base/AdminChatCommand'
 import client from '../Client'
 import path from 'node:path'
-import env from '../env'
-import { hiddenReply } from '../helpers'
+import env from '../utils/env'
+import { hiddenReply } from '../utils/helpers'
 
 class ToggleImageWhitelistCommand extends AdminChatCommand {
   async run (interaction: ChatInputCommandInteraction): Promise<void> {

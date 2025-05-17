@@ -1,6 +1,6 @@
 import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
-import { getRandomFromArrRecursive } from '../helpers'
+import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
