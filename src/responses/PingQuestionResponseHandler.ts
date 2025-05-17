@@ -5,6 +5,7 @@ import Client from '../Client'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
+    cooldownMs: 1000 * 60 * 5,
     messages: [
       'Real',
       'Fake',
@@ -33,8 +34,19 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
     ]
   }
 
+  lastMessageTime = 0
+
+  #checkCooldown ():boolean {
+    const time = new Date().getTime()
+    if (this.lastMessageTime + this.#settings.cooldownMs < time) {
+      this.lastMessageTime = time
+      return true
+    }
+    return false
+  }
+
   _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): boolean {
-    if (Client.client.user?.id !== message.author.id) {
+    if (Client.client.user?.id !== message.author.id && this.#checkCooldown()) {
       if (message.mentions.users.some((user, key, coll) => {
         return user.id === Client.client.user?.id
       })) {
