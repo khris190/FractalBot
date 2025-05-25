@@ -1,15 +1,18 @@
 import { ChatInputCommandInteraction, MessageFlags } from 'discord.js'
 
-export function getRandomFromArr (arr: any[]) {
-  return arr[Math.floor(Math.random() * arr.length)]
+export function getRandomFromArr (arr: any[]) :{ choice: any, index: number[] } {
+  const i = Math.floor(Math.random() * arr.length)
+  return { choice: arr[i], index: [i] }
 }
-export function getRandomFromArrRecursive (arr: any[], depth = 0) {
+export function getRandomFromArrRecursive (arr: any[], depth = 0) : { choice: any, index: number[] } {
   if (depth > 10) {
     throw new Error('Recursive depth error')
   }
   if (Array.isArray(arr)) {
-    return getRandomFromArrRecursive(arr[Math.floor(Math.random() * arr.length)], depth++)
-  } else { return arr }
+    const i = Math.floor(Math.random() * arr.length)
+    const res = getRandomFromArrRecursive(arr[i], depth++)
+    return { choice: res.choice, index: [i, ...res.index] }
+  } else { return { choice: arr, index: [-1] } }
 }
 
 export class Defer<T> extends Promise<T> {

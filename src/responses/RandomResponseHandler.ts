@@ -23,7 +23,7 @@ class RandomResponseHandler extends BaseResponseHandler {
   _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): boolean {
     if (Math.random() < this.#settings.chance) {
       const response = getRandomFromArrRecursive(this.#settings.messages)
-      message.reply({ content: response })
+      message.reply({ content: response.choice })
       this.logger.info('Replied to the message ', { author: message.author.displayName, response })
       return true
     }

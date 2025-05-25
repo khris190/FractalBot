@@ -2,10 +2,12 @@ import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
+import { Queue } from '../utils/queue/Queue'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 30,
+    messageGraceCount: 10,
     cooldownMessage: 'Lemme think about it',
     messages: [
       'Real',
@@ -55,7 +57,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
   }
 
   lastMessageTime = 0
-
+  lastMessages = new Queue<number[]>()
   #checkCooldown (cooldown = this.#settings.cooldownMs):boolean {
     const time = new Date().getTime()
     if (this.lastMessageTime + cooldown < time) {
@@ -72,7 +74,20 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       })) {
         if (message.content.includes('?')) {
           let response = this.#settings.cooldownMessage
-          if (this.#checkCooldown()) { response = getRandomFromArrRecursive(this.#settings.messages) }
+          if (this.#checkCooldown()) {
+            let i = [-1]
+            while (this.lastMessages.contains(i) || i[0] === -1) {
+              const res = getRandomFromArrRecursive(this.#settings.messages)
+              response = res.choice
+              i = res.index
+              console.log(this.lastMessages)
+              console.log(i)
+            }
+            this.lastMessages.enqueue(i)
+            if (this.lastMessages.size() > 10) {
+              this.lastMessages.dequeue()
+            }
+          }
           message.reply({ content: response })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
           return true

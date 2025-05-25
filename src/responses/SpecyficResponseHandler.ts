@@ -17,7 +17,7 @@ class SpecyficResponseHandler extends BaseResponseHandler {
         if (Array.isArray(responses)) {
           const response = getRandomFromArrRecursive(responses)
           if (message.content.toLowerCase() === key.toLowerCase()) {
-            message.reply({ content: response })
+            message.reply({ content: response.choice })
             this.logger.info('Replied to the message ', { author: message.author.displayName, response })
             return true
           }
