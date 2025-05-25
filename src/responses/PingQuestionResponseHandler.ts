@@ -5,7 +5,7 @@ import Client from '../Client'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
-    cooldownMs: 1000 * 60 * 5,
+    cooldownMs: 1000 * 30,
     cooldownMessage: 'Lemme think about it',
     messages: [
       'Real',
