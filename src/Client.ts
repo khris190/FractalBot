@@ -37,7 +37,7 @@ export class Client {
       if (this.client.user) {
         this.logger.info(`Logged in as ${this.client.user.tag}!`)
         this.ready.resolve()
-        this.client.user.setActivity('M*th')
+        this.client.user.setActivity('Balala')
       } else {
         this.logger.error('Unable to log in')
         this.ready.reject()
