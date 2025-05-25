@@ -80,8 +80,6 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
               const res = getRandomFromArrRecursive(this.#settings.messages)
               response = res.choice
               i = res.index
-              console.log(this.lastMessages)
-              console.log(i)
             }
             this.lastMessages.enqueue(i)
             if (this.lastMessages.size() > 10) {
