@@ -5,7 +5,7 @@ import { getRandomFromArrRecursive } from '../utils/helpers'
 class GrokResponseHandler extends BaseResponseHandler {
   #settings = {
     messages: [
-      "Not what i'm called",
+      "Not what i'm called.",
     ]
   }
 
