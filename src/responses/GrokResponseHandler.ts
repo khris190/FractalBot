@@ -13,7 +13,7 @@ class GrokResponseHandler extends BaseResponseHandler {
     if (message.content.toLowerCase().startsWith('@grok') && message.content.trim().endsWith('?')) {
       const response = getRandomFromArrRecursive(this.#settings.messages)
       message.reply({ content: response.choice })
-      this.logger.info('Replied to the message ', { author: message.author.displayName })
+      this.logger.info('Replied to the grok message ', { author: message.author.displayName })
       return true
     }
     return false
