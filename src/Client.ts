@@ -10,6 +10,7 @@ import PingEveryoneResponseHandler from './responses/PingEveryoneResponseHandler
 import PingQuestionResponseHandler from './responses/PingQuestionResponseHandler'
 import SpecyficResponseHandler from './responses/SpecyficResponseHandler'
 import RandomResponseHandler from './responses/RandomResponseHandler'
+import GrokResponseHandler from './responses/GrokResponseHandler'
 
 export class Client {
   client
@@ -48,6 +49,7 @@ export class Client {
     this.client.on('messageCreate', async message => {
       try {
         if (PingEveryoneResponseHandler.handleMessage(message)) return
+        if (GrokResponseHandler.handleMessage(message)) return
         if (PingQuestionResponseHandler.handleMessage(message)) return
         SpecyficResponseHandler.handleMessage(message)
         RandomResponseHandler.handleMessage(message)
