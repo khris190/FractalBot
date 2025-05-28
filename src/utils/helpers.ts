@@ -45,7 +45,7 @@ export function sleep (ms:number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export async function hiddenReply (interaction: ChatInputCommandInteraction, message: string) {
+export async function hiddenInteractionReply (interaction: ChatInputCommandInteraction, message: string) {
   await interaction.reply({
     content: message,
     flags: MessageFlags.Ephemeral

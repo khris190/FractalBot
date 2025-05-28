@@ -3,9 +3,13 @@ import db from '../utils/db/db'
 import { imageChannel } from '../utils/db/schema'
 import { eq } from 'drizzle-orm'
 import AdminChatCommand from './base/AdminChatCommand'
-import { hiddenReply } from '../utils/helpers'
+import { hiddenInteractionReply } from '../utils/helpers'
 
 class ToggleImageWhitelistCommand extends AdminChatCommand {
+  constructor () {
+    super('catdeploymentmode', 'Cat Mode')
+  }
+
   async run (interaction: ChatInputCommandInteraction): Promise<void> {
     const channelId = interaction.channelId
     const channel = db.select()
@@ -18,14 +22,14 @@ class ToggleImageWhitelistCommand extends AdminChatCommand {
       const delResult = await db.delete(imageChannel)
         .where(eq(imageChannel.channelId, channelId))
       if (delResult.changes) {
-        hiddenReply(interaction, 'Removed: ' + channelName)
+        hiddenInteractionReply(interaction, 'Removed: ' + channelName)
       }
     } else {
       this.logger.info(`Adding ${(interaction.channel as TextChannel).name} to imageChannel table`)
       await db.insert(imageChannel).values({ channelId, name: channelName })
-      hiddenReply(interaction, 'Added: ' + channelName)
+      hiddenInteractionReply(interaction, 'Added: ' + channelName)
     }
   }
 }
 
-module.exports = new ToggleImageWhitelistCommand('catdeploymentmode', 'Cat Mode')
+module.exports = new ToggleImageWhitelistCommand()

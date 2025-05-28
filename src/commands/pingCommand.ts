@@ -1,11 +1,15 @@
 import { ChatInputCommandInteraction } from 'discord.js'
 import BaseChatCommand from './base/BaseChatCommand'
-import { hiddenReply } from '../utils/helpers'
+import { hiddenInteractionReply } from '../utils/helpers'
 
 class PingCommand extends BaseChatCommand {
+  constructor () {
+    super('ping', 'test')
+  }
+
   async run (interaction: ChatInputCommandInteraction): Promise<void> {
-    hiddenReply(interaction, 'Pong')
+    hiddenInteractionReply(interaction, 'Pong')
   }
 }
 
-module.exports = new PingCommand('ping', 'test')
+module.exports = new PingCommand()

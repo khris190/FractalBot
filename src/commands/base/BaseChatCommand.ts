@@ -11,8 +11,7 @@ export default abstract class BaseChatCommand {
   logger = commandLogger
   constructor (name:string, desc: string) {
     this.data = new SlashCommandBuilder()
-      .setName(name)
-      .setDescription(desc)
+    this.data.setName(name).setDescription(desc)
   }
 
   async execute (interaction: ChatInputCommandInteraction) {
