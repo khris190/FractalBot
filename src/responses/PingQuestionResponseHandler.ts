@@ -7,7 +7,7 @@ import { Queue } from '../utils/queue/Queue'
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 30,
-    messageGraceCount: 10,
+    messageGraceCount: 21,
     cooldownMessage: 'Lemme think about it',
     messages: [
       'Real',
