@@ -1,4 +1,4 @@
-import { OmitPartialGroupDMChannel, Message } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, MessageFlags } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
@@ -88,7 +88,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
               this.lastMessages.dequeue()
             }
           }
-          message.reply({ content: response })
+          message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
           return true
         }

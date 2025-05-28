@@ -1,4 +1,4 @@
-import { OmitPartialGroupDMChannel, Message } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, MessageFlags } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { fuckerArr } from '../settings'
 import { getRandomFromArrRecursive } from '../utils/helpers'
@@ -23,7 +23,7 @@ class RandomResponseHandler extends BaseResponseHandler {
   _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): boolean {
     if (Math.random() < this.#settings.chance) {
       const response = getRandomFromArrRecursive(this.#settings.messages)
-      message.reply({ content: response.choice })
+      message.reply({ content: response.choice, flags: MessageFlags.SuppressNotifications })
       this.logger.info('Replied to the message ', { author: message.author.displayName, response })
       return true
     }
