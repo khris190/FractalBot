@@ -1,7 +1,8 @@
 import { ChatInputCommandInteraction, TextChannel } from 'discord.js'
 import AdminChatCommand from './base/AdminChatCommand'
 import client from '../Client'
-import { hiddenInteractionReply, sleep } from '../utils/helpers'
+import { hiddenInteractionReply } from '../utils/helpers'
+import ReplyHelper from '../utils/ReplyHelper'
 
 class WriteStuffHereCommand extends AdminChatCommand {
   constructor () {
@@ -17,12 +18,7 @@ class WriteStuffHereCommand extends AdminChatCommand {
     hiddenInteractionReply(interaction, 'Done.')
     if (content) {
       const chan = client.client.channels.cache.get(channelId) as TextChannel
-      (async () => {
-        await sleep(1000)
-        chan.sendTyping()
-        await sleep(8500)
-        chan.send({ content })
-      })()
+      ReplyHelper.delayedSendToChannel(chan, { content })
     }
   }
 }

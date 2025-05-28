@@ -1,6 +1,8 @@
-import { OmitPartialGroupDMChannel, Message, MessageReplyOptions } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, MessageReplyOptions, TextChannel, VoiceChannel, PrivateThreadChannel, PublicThreadChannel, StageChannel, NewsChannel, PartialDMChannel, DMChannel } from 'discord.js'
 import getLogger from './logger/getLogger'
 import { sleep } from './helpers'
+
+type repliableChannel = DMChannel | PartialDMChannel | NewsChannel | StageChannel | TextChannel | PublicThreadChannel<boolean> | PrivateThreadChannel | VoiceChannel
 
 export enum ResponseType {
   REPLY,
@@ -16,13 +18,13 @@ export default class ReplyHelper {
         this.reply(message, payload)
         break
       case ResponseType.SAME_CHANNEL:
-        this.sameChannelReply(message, payload)
+        this.sendToChannel(message.channel, payload)
         break
       case ResponseType.DELAY_REPLY:
         this.delayedReply(message, payload)
         break
       case ResponseType.DELAY_SAME_CHANNEL:
-        this.delayedSameChannelReply(message, payload)
+        this.delayedSendToChannel(message.channel, payload)
         break
       default:
         this.logger.error(`Unknown response type: ${type}`)
@@ -34,10 +36,6 @@ export default class ReplyHelper {
     message.reply(payload)
   }
 
-  private static sameChannelReply (message: OmitPartialGroupDMChannel<Message<boolean>>, payload:MessageReplyOptions) {
-    message.channel.send(payload)
-  }
-
   private static async delayedReply (message: OmitPartialGroupDMChannel<Message<boolean>>, payload:MessageReplyOptions) {
     await sleep(1000)
     message.channel.sendTyping()
@@ -45,11 +43,15 @@ export default class ReplyHelper {
     this.reply(message, payload)
   }
 
-  private static async delayedSameChannelReply (message: OmitPartialGroupDMChannel<Message<boolean>>, payload:MessageReplyOptions) {
+  public static async delayedSendToChannel (channel: repliableChannel, payload:MessageReplyOptions) {
     await sleep(1000)
-    message.channel.sendTyping()
+    channel.sendTyping()
     await sleep(this.calculateDelayMs(payload.content ?? ''))
-    this.sameChannelReply(message, payload)
+    this.sendToChannel(channel, payload)
+  }
+
+  public static sendToChannel (channel: repliableChannel, payload:MessageReplyOptions) {
+    channel.send(payload)
   }
 
   private static calculateDelayMs (message:string) {
