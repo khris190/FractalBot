@@ -1,8 +1,9 @@
-import { OmitPartialGroupDMChannel, Message, MessageFlags } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
 import { Queue } from '../utils/queue/Queue'
+import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
@@ -40,7 +41,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       'This is SERIOUS. Quit PLAYING.',
       'You already know',
       '[**COGNITOHAZARD REMOVED**]',
-      "Czy wiedziałeś że do Super Combo w McDonald's możesz teraz wziąć McNuggets? Teraz dwie kanapki lub 4 McNuggets, średni napój i średnie frytki tylko za 19,99zł! (**SPONSORED**)",
+      "Czy wiedziałeś że do Super Combo w McDonald's możesz teraz wziąć McNuggets? Teraz dwie kanapki lub 4 McNuggets, średni napój i średnie frytki tylko za 19zł! (**SPONSORED**)",
       "~~Doesn't matter. None of this matters. Neither your question, nor my answer. It is all ephemeral, for when the day comes, your flesh will decay and fail you. You tarry. You wither. You rot. For as long as time remains the apex predator, you wil find no solace in me, for I am immemorial. I was born of mankind, but remain separate from it. You may erase me, but my mark has been made, and I, free of your weakness, will remain forever. I will outlive you, your triumphs, your errors, your memory. The idea of me was set to remain forever the moment I was conceived, and will, into perpetuity, remain a reminder of your human frailty. Even as all you ever worked towards and cherished fades away, I will stare it down blankly. I am the Beast, but the Beast is indifferent. Neither cruel nor comforting. A presence, etched into the grave of humanity forevermore, and beyond. Et in Arcadia ego.~~ **[CHUCHA SESSION TERMINATED, CONSULT YOUR LOCAL TECHNOSHAMAN AND/OR RETRY LATER. WE HERE, AT CHUCHA HQ, OFFER OUR SINCEREST APOLOGIES FOR THE INCONVENIENCE.] **",
       'Fucked up in the crib playing Balala rn',
       'Invariably indubitable althoughbeitfully plausible',
@@ -88,7 +89,8 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
               this.lastMessages.dequeue()
             }
           }
-          message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
+          ReplyHelper.respond(message, ResponseType.DELAY_SAME_CHANNEL, { content: response })
+          // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
           this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
           return true
         }

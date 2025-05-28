@@ -1,8 +1,9 @@
-import { OmitPartialGroupDMChannel, Message } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, MessageFlags } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { fuckerArr } from '../settings'
 import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
+import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 
 class SpecyficResponseHandler extends BaseResponseHandler {
   #settings = {
@@ -17,7 +18,7 @@ class SpecyficResponseHandler extends BaseResponseHandler {
         if (Array.isArray(responses)) {
           const response = getRandomFromArrRecursive(responses)
           if (message.content.toLowerCase() === key.toLowerCase()) {
-            message.reply({ content: response.choice })
+            ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response.choice, flags: MessageFlags.SuppressNotifications })
             this.logger.info('Replied to the message ', { author: message.author.displayName, response })
             return true
           }
