@@ -16,7 +16,10 @@ class WriteStuffHereCommand extends AdminChatCommand {
     const content = interaction.options.getString('stuff')
     if (content) {
       const chan = client.client.channels.cache.get(channelId) as TextChannel
-      chan.send({ content })
+      chan.sendTyping()
+      setTimeout(function () {
+        chan.send({ content })
+      }, 10000)
     }
     hiddenInteractionReply(interaction, 'Done.')
   }
