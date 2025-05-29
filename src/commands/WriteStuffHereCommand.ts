@@ -4,7 +4,7 @@ import client from '../Client'
 import { hiddenInteractionReply } from '../utils/helpers'
 import ReplyHelper from '../utils/ReplyHelper'
 
-const strOptionName = 'policyDefinitionSet'
+const strOptionName = 'policy_definition_set'
 
 class WriteStuffHereCommand extends AdminChatCommand {
   constructor () {
