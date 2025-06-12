@@ -1,8 +1,21 @@
 import { ChatInputCommandInteraction, MessageFlags } from 'discord.js'
+import { WeightedMessage } from '../responses/PingWishResponseHandler'
 
 export function getRandomFromArr (arr: any[]) :{ choice: any, index: number[] } {
   const i = Math.floor(Math.random() * arr.length)
   return { choice: arr[i], index: [i] }
+}
+export function getRandomFromWeightedArr (arr: WeightedMessage[]) :{ choice: WeightedMessage, index: number[] } {
+  let sum = 0
+  let choice = -1
+  for (let i = 0; i < arr.length; i++) {
+    const msg = arr[i]
+    if (Math.random() >= sum / (sum + msg.weight)) {
+      choice = i
+    }
+    sum += msg.weight
+  }
+  return { choice: arr[choice], index: [choice] }
 }
 export function getRandomFromArrRecursive (arr: any[], depth = 0) : { choice: any, index: number[] } {
   if (depth > 10) {
