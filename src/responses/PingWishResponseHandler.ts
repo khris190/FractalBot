@@ -1,8 +1,8 @@
 import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
-import { getRandomFromWeightedArr } from '../utils/helpers'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
+import { MessageArr } from '../utils/MessageArr'
 
 // TODO: move this and make usable everywhere
 export class WeightedMessage {
@@ -18,11 +18,11 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 60 * 60 * 36,
     cooldownMessage: 'Never again',
-    messages: [
-      new WeightedMessage('Granted', 4),
-      new WeightedMessage('I sense a loophole', 11),
-      new WeightedMessage('Denied', 85),
-    ]
+    messages: new MessageArr([
+      ['Granted', 4],
+      ['I sense a loophole', 11],
+      ['Denied', 85],
+    ])
   }
 
   lastMessageTime = 0
@@ -43,8 +43,8 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
         if (message.content.replace(/<@\d+>/, '').toLowerCase().trim().startsWith('i wish')) {
           let response = this.#settings.cooldownMessage
           if (this.#checkCooldown()) {
-            const res = getRandomFromWeightedArr(this.#settings.messages)
-            response = res.choice.msg
+            const res = this.#settings.messages.getRandom()
+            response = res.choice
           }
           ReplyHelper.respond(message, ResponseType.DELAY_SAME_CHANNEL, { content: response })
           // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })

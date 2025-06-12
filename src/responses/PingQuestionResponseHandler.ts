@@ -1,16 +1,16 @@
 import { OmitPartialGroupDMChannel, Message } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
-import { getRandomFromArrRecursive } from '../utils/helpers'
 import Client from '../Client'
 import { Queue } from '../utils/queue/Queue'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
+import { MessageArr } from '../utils/MessageArr'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 30,
     messageGraceCount: 21,
     cooldownMessage: 'Lemme think about it',
-    messages: [
+    messages: new MessageArr([
       'Real',
       'Fake',
       'Factual',
@@ -56,7 +56,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       'Innocent until proven guilty, I say',
       'Guilty until proven innocent, I say',
       'Wuh?',
-    ]
+    ])
   }
 
   lastMessageTime = 0
@@ -80,7 +80,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
           if (this.#checkCooldown()) {
             let i = [-1]
             while (this.lastMessages.contains(i) || i[0] === -1) {
-              const res = getRandomFromArrRecursive(this.#settings.messages)
+              const res = this.#settings.messages.getRandom()
               response = res.choice
               i = res.index
             }

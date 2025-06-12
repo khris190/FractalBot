@@ -1,15 +1,15 @@
 import { OmitPartialGroupDMChannel, Message, MessageFlags } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import { fuckerArr } from '../settings'
-import { getRandomFromArrRecursive } from '../utils/helpers'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import { Queue } from '../utils/queue/Queue'
+import { MessageArr } from '../utils/MessageArr'
 
 class RandomResponseHandler extends BaseResponseHandler {
   #settings = {
     chance: 0.008,
     messageGraceCount: 21,
-    messages: [
+    messages: new MessageArr([
       fuckerArr,
       'White people be like',
       'nice',
@@ -82,7 +82,7 @@ class RandomResponseHandler extends BaseResponseHandler {
       "I'm depressed, as the kids say.",
       'The person below shall bear the curse.',
       'Buh',
-    ]
+    ])
   }
 
   lastMessages = new Queue<number[]>()
@@ -92,7 +92,7 @@ class RandomResponseHandler extends BaseResponseHandler {
       let response = ''
       let i = [-1]
       while (this.lastMessages.contains(i) || i[0] === -1) {
-        const res = getRandomFromArrRecursive(this.#settings.messages)
+        const res = this.#settings.messages.getRandom()
         response = res.choice
         i = res.index
       }
