@@ -4,16 +4,6 @@ import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import { MessageArr } from '../utils/MessageArr'
 
-// TODO: move this and make usable everywhere
-export class WeightedMessage {
-  msg: string
-  weight: number
-  constructor (msg:string, weight:number = 1) {
-    this.msg = msg
-    this.weight = weight
-  }
-}
-
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 60 * 60 * 36,

@@ -9,7 +9,7 @@ export class WeightedMessage {
 
 type WeightedMessageTuple = [string, number]
 type WeightedArrTuple = [WeightedArrType, number]
-type WeightedArrType = (WeightedArrType | WeightedArrTuple | WeightedMessageTuple | string)[]
+type WeightedArrType = (WeightedArrType | string | WeightedArrTuple | WeightedMessageTuple)[]
 
 function isWeightedMessageTuple (value: any): value is WeightedMessageTuple {
   return (
