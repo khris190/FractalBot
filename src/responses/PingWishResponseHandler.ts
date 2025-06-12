@@ -40,7 +40,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       if (message.mentions.users.some((user, key, coll) => {
         return user.id === Client.client.user?.id
       })) {
-        if (message.content.replace(/<@\d+>/, '').toLowerCase().trim().startsWith('i wish')) {
+        if (message.content.replaceAll(/<@\d+>/, '').toLowerCase().trim().startsWith('i wish')) {
           let response = this.#settings.cooldownMessage
           if (this.#checkCooldown()) {
             const res = getRandomFromWeightedArr(this.#settings.messages)
