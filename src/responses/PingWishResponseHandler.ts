@@ -48,7 +48,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
           }
           ReplyHelper.respond(message, ResponseType.DELAY_SAME_CHANNEL, { content: response })
           // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
-          this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
+          this.logger.info('Replied to the @ping wish ', { author: message.author.displayName })
           return true
         }
       }
