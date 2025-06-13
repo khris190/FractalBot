@@ -2,6 +2,9 @@ export class WeightedMessage {
   msg: string | MessageArr
   weight: number
   constructor (msg:string | MessageArr, weight:number = 1) {
+    if (weight <= 0) {
+      throw new Error('weight must be positive, passed: ' + weight)
+    }
     this.msg = msg
     this.weight = weight
   }

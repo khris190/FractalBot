@@ -15,6 +15,13 @@
       "when": 1746382042307,
       "tag": "0001_woozy_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1749846888147,
+      "tag": "0002_lame_fallen_one",
+      "breakpoints": true
     }
   ]
 }

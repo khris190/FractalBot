@@ -3,6 +3,9 @@ import BaseResponseHandler from './BaseResponseHandler'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import { MessageArr } from '../utils/MessageArr'
+import { GuildData } from '../utils/db/schema'
+import db from '../utils/db/db'
+import { eq } from 'drizzle-orm'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
@@ -15,11 +18,13 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
     ])
   }
 
-  lastMessageTime = 0
-  #checkCooldown (cooldown = this.#settings.cooldownMs):boolean {
+  #checkCooldown (guildId:string, cooldown = this.#settings.cooldownMs):boolean {
     const time = new Date().getTime()
-    if (this.lastMessageTime + cooldown < time) {
-      this.lastMessageTime = time
+    const lastWishTS = db.select().from(GuildData).where(eq(GuildData.id, guildId ?? '')).get()?.lastWishTimeStamp ?? 0
+    if (lastWishTS + cooldown < time) {
+      db.insert(GuildData)
+        .values({ id: guildId, lastWishTimeStamp: time })
+        .onConflictDoUpdate({ target: GuildData.id, set: { lastWishTimeStamp: time } }).then(res => console.log(res))
       return true
     }
     return false
@@ -32,7 +37,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
       })) {
         if (message.content.replace(/<@\d+>/, '').toLowerCase().trim().startsWith('i wish')) {
           let response = this.#settings.cooldownMessage
-          if (this.#checkCooldown()) {
+          if (this.#checkCooldown(message.guildId ?? '')) {
             const res = this.#settings.messages.getRandom()
             response = res.choice
           }

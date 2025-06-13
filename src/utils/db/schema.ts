@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { text, int, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
-export const imageChannel = sqliteTable('imageChannel', {
+export const ImageChannel = sqliteTable('imageChannel', {
   id: int().primaryKey({ autoIncrement: true }),
   channelId: text().notNull(),
   name: text(),
@@ -15,7 +15,7 @@ export const imageChannel = sqliteTable('imageChannel', {
   uniqueIndex('imageChannelIdx').on(table.channelId)
 ])
 
-export const messageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
+export const MessageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
   id: int().primaryKey({ autoIncrement: true }),
   channelId: text().notNull(),
   name: text(),
@@ -28,3 +28,13 @@ export const messageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
 }, (table) => [
   uniqueIndex('messageBlacklistChannelIdx').on(table.channelId)
 ])
+export const GuildData = sqliteTable('guildData', {
+  id: text().primaryKey(),
+  lastWishTimeStamp: int(),
+  updatedAt: text('updatedAt')
+    .notNull()
+    .$onUpdate(() => sql`(current_timestamp)`),
+  createdAt: text('createdAt')
+    .notNull()
+    .default(sql`(current_timestamp)`),
+})
