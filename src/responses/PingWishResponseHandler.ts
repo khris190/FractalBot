@@ -9,7 +9,8 @@ import { eq } from 'drizzle-orm'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
-    cooldownMs: 1000 * 60 * 60 * 36,
+    // cooldownMs: 1000 * 60 * 60 * 36,
+    cooldownMs: 1000 * 60 * 60 * 4,
     cooldownMessage: 'Never again',
     messages: new MessageArr([
       ['Granted', 4],
