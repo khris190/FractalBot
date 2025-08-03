@@ -2,7 +2,9 @@ import env from '../env'
 import 'dotenv/config'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { log } from 'node:console'
 
+log(env.DB_PATH)
 const sqlite = new Database(env.DB_PATH)
 const db = drizzle({ client: sqlite })
 export default db

@@ -4,8 +4,8 @@ import getLogger from '../utils/logger/getLogger'
 const responseLogger = getLogger('responses')
 export default abstract class BaseResponseHandler {
   logger = responseLogger
-  handleMessage (message: OmitPartialGroupDMChannel<Message<boolean>>) :boolean {
-    return this._handle(message) ?? false
+  async handleMessage (message: OmitPartialGroupDMChannel<Message<boolean>>) :Promise<boolean> {
+    return await this._handle(message) ?? false
   }
-  abstract _handle (message: OmitPartialGroupDMChannel<Message<boolean>>):boolean | null
+  abstract _handle (message: OmitPartialGroupDMChannel<Message<boolean>>):boolean | null | Promise<boolean | null>
 }

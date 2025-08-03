@@ -1,10 +1,21 @@
 services:
   fractal-bot:
     container_name: fractal-bot
-    build: .
+    build:
+      context: .
+      target: node
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
     environment:
       - DATA_PATH=/app/data
       - LOG_PATH=/app/logs
+      - SIMILARITY_ENDPOINT=http://fractal-similarity:5000
+
+  fractal-similarity:
+    container_name: fractal-similarity
+    build:
+      context: .
+      target: python
+    expose:
+      - "5000" # Expose port 5000 to other services

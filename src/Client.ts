@@ -49,10 +49,10 @@ export class Client {
 
     this.client.on('messageCreate', async message => {
       try {
-        if (PingEveryoneResponseHandler.handleMessage(message)) return
-        if (GrokResponseHandler.handleMessage(message)) return
-        if (PingWishResponseHandler.handleMessage(message)) return
-        if (PingQuestionResponseHandler.handleMessage(message)) return
+        if (await PingEveryoneResponseHandler.handleMessage(message)) return
+        if (await GrokResponseHandler.handleMessage(message)) return
+        if (await PingWishResponseHandler.handleMessage(message)) return
+        if (await PingQuestionResponseHandler.handleMessage(message)) return
         SpecyficResponseHandler.handleMessage(message)
         RandomResponseHandler.handleMessage(message)
       } catch (e:any) {
