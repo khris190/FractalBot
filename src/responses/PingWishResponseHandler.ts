@@ -16,9 +16,9 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
     // cooldownMs: 1000,
     cooldownMessage: 'Never again',
     messages: new MessageArr([
-      ['Granted', 4],
+      ['Granted', 5],
       ['I sense a loophole', 11],
-      ['Denied', 85],
+      ['Denied', 84],
     ]),
     getCreativeMsg: 'Denied. Get more creative, fleshbag.'
   }
