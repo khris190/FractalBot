@@ -7,7 +7,6 @@ import { GuildData } from '../utils/db/schema'
 import db from '../utils/db/db'
 import { eq } from 'drizzle-orm'
 import SimilarityChecker from '../utils/SimilarityChecker'
-import { log } from 'node:console'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   similarityChecker: SimilarityChecker
