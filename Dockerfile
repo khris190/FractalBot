@@ -7,13 +7,6 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     npm ci --omit=dev
 
 COPY --chown=node:node . .
-# Install python/pip
-# Install Python and other build-time dependencies
-RUN apk update && \
-    apk add --no-cache \
-    python3 \
-    py3-pip 
-
 
 CMD [ "npm", "run", "start"]
 
@@ -25,7 +18,7 @@ COPY ./python .
 # e.g., postgresql-dev, mysql-dev, etc.
 RUN python3 -m venv .venv && \
     . .venv/bin/activate && \
-    pip install --upgrade pip &&\
+    pip install --no-cache-dir --upgrade pip &&\
     pip install --no-cache-dir -U sentence-transformers==5.0.0 
 
 CMD [  ".venv/bin/python", "server.py" ]

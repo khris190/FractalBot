@@ -7,16 +7,17 @@ import { GuildData } from '../utils/db/schema'
 import db from '../utils/db/db'
 import { eq } from 'drizzle-orm'
 import SimilarityChecker from '../utils/SimilarityChecker'
+import { log } from 'node:console'
 
 class PingQuestionResponseHandler extends BaseResponseHandler {
   similarityChecker: SimilarityChecker
   #settings = {
     // cooldownMs: 1000 * 60 * 60 * 36,
-    cooldownMs: 1000 * 60 * 60 * 4,
-    // cooldownMs: 1000,
+    // cooldownMs: 1000 * 60 * 60 * 4.8,
+    cooldownMs: 1000,
     cooldownMessage: 'Never again',
     messages: new MessageArr([
-      ['Granted', 5],
+      ['Granted', 5, 2],
       ['I sense a loophole', 11],
       ['Denied', 84],
     ]),

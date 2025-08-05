@@ -1,33 +1,43 @@
 export class WeightedMessage {
   msg: string | MessageArr
+  #baseWeight: number
   weight: number
-  constructor (msg:string | MessageArr, weight:number = 1) {
+  mult: number
+  constructor (msg:string | MessageArr, weight:number = 1, mult:number = 1) {
     if (weight <= 0) {
       throw new Error('weight must be positive, passed: ' + weight)
     }
     this.msg = msg
+    this.#baseWeight = weight
     this.weight = weight
+    this.mult = mult
+  }
+
+  resetWeight () {
+    this.weight = this.#baseWeight
   }
 }
 
-type WeightedMessageTuple = [string, number]
-type WeightedArrTuple = [WeightedArrType, number]
+type WeightedMessageTuple = [string, number] | [string, number, number]
+type WeightedArrTuple = [WeightedArrType, number] | [WeightedArrType, number, number]
 type WeightedArrType = (WeightedArrType | string | WeightedArrTuple | WeightedMessageTuple)[]
 
 function isWeightedMessageTuple (value: any): value is WeightedMessageTuple {
   return (
     Array.isArray(value) &&
-    value.length === 2 &&
+    (value.length === 2 || value.length === 3) &&
     typeof value[0] === 'string' &&
-    typeof value[1] === 'number'
+    typeof value[1] === 'number' &&
+      (['number', 'undefined'].includes(typeof value[2]))
   )
 }
 function isWeightedArrTuple (value: any): value is WeightedArrTuple {
   return (
     Array.isArray(value) &&
-    value.length === 2 &&
+    (value.length === 2 || value.length === 3) &&
     Array.isArray(value[0]) &&
-    typeof value[1] === 'number'
+    typeof value[1] === 'number' &&
+      (['number', 'undefined'].includes(typeof value[2]))
   )
 }
 
@@ -39,18 +49,18 @@ export class MessageArr {
       if (typeof msg === 'string') {
         this.messages.push(new WeightedMessage(msg))
       } else if (isWeightedMessageTuple(msg)) {
-        this.messages.push(new WeightedMessage(msg[0], msg[1]))
+        this.messages.push(new WeightedMessage(msg[0], msg[1], msg[2]))
       } else if (isWeightedArrTuple(msg)) {
-        this.messages.push(new WeightedMessage(new MessageArr(msg[0]), msg[1]))
+        this.messages.push(new WeightedMessage(new MessageArr(msg[0]), msg[1], msg[2]))
       } else {
         this.messages.push(new WeightedMessage(new MessageArr(msg)))
       }
     }
   }
 
-  add (msg: WeightedMessage | string, weight = 1) {
+  add (msg: WeightedMessage | string, weight = 1, mult = 1) {
     if (typeof msg === 'string') {
-      this.messages.push(new WeightedMessage(msg, weight))
+      this.messages.push(new WeightedMessage(msg, weight, mult))
     } else {
       this.messages.push(msg)
     }
@@ -66,17 +76,20 @@ export class MessageArr {
         choice = i
       }
       sum += msg.weight
+      msg.weight *= msg.mult// TODO: use a method
     }
     return choice
   }
 
   getRandom (): { choice: string, index: number[] } {
     const i = this.chooseRandom()
-    if (this.messages[i].msg instanceof MessageArr) {
-      const res = this.messages[i].msg.getRandom()
+    const choice = this.messages[i]
+    choice.resetWeight()
+    if (choice.msg instanceof MessageArr) {
+      const res = choice.msg.getRandom()
       return { choice: res.choice, index: [i, ...res.index] }
     } else {
-      return { choice: this.messages[i].msg, index: [i] }
+      return { choice: choice.msg, index: [i] }
     }
   }
 }
