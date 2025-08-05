@@ -12,8 +12,8 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
   similarityChecker: SimilarityChecker
   #settings = {
     // cooldownMs: 1000 * 60 * 60 * 36,
-    // cooldownMs: 1000 * 60 * 60 * 4.8,
-    cooldownMs: 1000,
+    cooldownMs: 1000 * 60 * 60 * 4.8,
+    // cooldownMs: 1000,
     cooldownMessage: 'Never again',
     messages: new MessageArr([
       ['Granted', 5, 2],
