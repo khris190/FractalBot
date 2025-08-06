@@ -11,7 +11,7 @@ class GrokResponseHandler extends BaseResponseHandler {
   }
 
   _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): boolean {
-    if (message.content.toLowerCase().startsWith('@grok') && message.content.trim().endsWith('?')) {
+    if (message.content.toLowerCase().trim().startsWith('@grok')) {
       const response = this.#settings.messages.getRandom()
       ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response.choice, flags: MessageFlags.SuppressNotifications })
       this.logger.info('Replied to the grok message ', { author: message.author.displayName })
