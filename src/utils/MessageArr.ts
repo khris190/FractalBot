@@ -58,6 +58,10 @@ export class MessageArr {
     }
   }
 
+  length () {
+    return this.messages.length
+  }
+
   add (msg: WeightedMessage | string, weight = 1, mult = 1) {
     if (typeof msg === 'string') {
       this.messages.push(new WeightedMessage(msg, weight, mult))

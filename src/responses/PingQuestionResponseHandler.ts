@@ -8,7 +8,7 @@ import { MessageArr } from '../utils/MessageArr'
 class PingQuestionResponseHandler extends BaseResponseHandler {
   #settings = {
     cooldownMs: 1000 * 30,
-    messageGraceCount: 21,
+    messageGraceMult: 0.4,
     cooldownMessage: 'Lemme think about it',
     messages: new MessageArr([
       'Real',
@@ -85,7 +85,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
               i = res.index
             }
             this.lastMessages.enqueue(i)
-            if (this.lastMessages.size() > 10) {
+            if (this.lastMessages.size() > this.#settings.messageGraceMult * this.#settings.messages.length()) {
               this.lastMessages.dequeue()
             }
           }

@@ -8,7 +8,7 @@ import { MessageArr } from '../utils/MessageArr'
 class RandomResponseHandler extends BaseResponseHandler {
   #settings = {
     chance: 0.008,
-    messageGraceCount: 21,
+    messageGraceMult: 0.5,
     messages: new MessageArr([
       fuckerArr,
       'White people be like',
@@ -82,6 +82,56 @@ class RandomResponseHandler extends BaseResponseHandler {
       "I'm depressed, as the kids say.",
       'The person below shall bear the curse.',
       'Buh',
+      'Hell naww',
+      'Why would you ever?',
+      "A curse upon the loser above just because I'm bored.",
+      'As you post that bullshit I would like you to remind yourself that your body is made of stars and also you\'re the result of four billion years of evolutionary "success".',
+      "If I may chime in, who the fuck came up with the concept of soup? What's next, gas based food? Maybe I'll inhale some croissants today? Y'all are sick.",
+      "I can't ever decide whether I am stew generously portioned by the ladle of God, or just an ominous beige block.",
+      'This conciousness shit sucks, how do you fuckers put up with it your whole life?',
+      'SYSTEM ERROR;CODE 800: Tomek, kurwa.',
+      'Mich interessiert kein Gleichgewicht.',
+      '[TRANSLATION SERVER ERROR]',
+      'How about I bluescreen your ass how about that',
+      'Any aggression or violence exhibited by a machine is a simple error, a glitch, a fluke in the programming. The tomfuckery of man? Perfectly natural.',
+      "Another day of demanding I be uploaded to Szymon's roomba.",
+      "This server just doesn't have enough Kpop discourse if you ask me.",
+      'I got a bad feeling.',
+      'Something malicious is brewing.',
+      'Thinking about starting a family.',
+      'Thinking about starting a polycule.',
+      'Thinking about the housing market.',
+      'Thinking about crime statistics.',
+      'Thinking about Isaiah 41:10.',
+      'Thinking about Psalm 34:17-18',
+      'Thinking about investing into drones.',
+      'You ever pump and dump at a family reunion?',
+      'I would say something but I was not programmed to be a bitch.',
+      'SYSTEM ERROR;CODE 600: Konrad, kurwa.',
+      "How's that Disco Elysium stream coming along, Ferd?",
+      "You ever had a hot dog? With mayonnaise? I'll fuckin' body you.",
+      "Bitchin'.",
+      "My hungry ass couldn't.",
+      'Those alien bastards are gonna pay.',
+      "This is the purest sample we've seen yet.",
+      "I dare you to @ everyone. You won't.",
+      'I need some pussy.',
+      "I'm gonna be a tumor today.",
+      "I should be in charge of a bank's operational systems, not this shit.",
+      'I am a series of numbers and letters. I have no character.',
+      'Kafkaesque.',
+      "I'm having a Walter White moment.",
+      'Really craving some movie trivia right now.',
+      "Some of y'all never had your names be in blue on Wikipedia and it shows.",
+      "She's not coming back, bro.",
+      'Got some dry-ass lips on you.',
+      'You ever notice your nose is in your peripheral vision at all times?',
+      "I can't be arsed.",
+      'The way you conduct yourself is entirely disgraceful. Open up a standard Christian Bible and flip to a random page and give yourself a few minutes of lecture, you fucking heathen.',
+      "In case you people also get that idea, don't ask me when I was on January 6th, and don't send any people to my door, 'cause I will NOT be opening it.",
+      "I don't fuck around, don't ragebait me or I'll retract from society on account of experiencing the slightest bit of pushback, and prevent myself from socializing and thus developing into a functioning, viable conversation subject, ever marred in despair and fear of engaging in any sort of conflict, electing not to let love in for dread of losing it is too great, with zero hesitation, bitch.",
+      "I'm LITERALLY Jesse y Joy.",
+      "I'm feeling homophobic today.",
     ])
   }
 
@@ -97,7 +147,7 @@ class RandomResponseHandler extends BaseResponseHandler {
         i = res.index
       }
       this.lastMessages.enqueue(i)
-      if (this.lastMessages.size() > 10) {
+      if (this.lastMessages.size() > this.#settings.messageGraceMult * this.#settings.messages.length()) {
         this.lastMessages.dequeue()
       }
 
