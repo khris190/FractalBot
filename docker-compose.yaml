@@ -4,6 +4,8 @@ services:
     build:
       context: .
       target: node
+    logging:
+      driver: none
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -17,5 +19,7 @@ services:
     build:
       context: .
       target: python
+    logging:
+      driver: none
     expose:
       - "5000" # Expose port 5000 to other services

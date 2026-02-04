@@ -10,7 +10,8 @@ import ILogger from '../utils/logger/ILogger'
 
 class RandomImageInterval extends BaseInterval {
   async run (self: Client, logger: ILogger) {
-    if (Math.random() <= 0.00008) {
+    // if (Math.random() <= 0.00008) {
+    if (Math.random() <= 0.0000001) {
       logger.info('sending the image')
       const channel = db.select().from(ImageChannel).orderBy(sql`RANDOM()`).limit(1).get()
       logger.info('to channel:', channel)

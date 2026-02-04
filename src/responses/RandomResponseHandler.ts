@@ -7,7 +7,7 @@ import { MessageArr } from '../utils/MessageArr'
 
 class RandomResponseHandler extends BaseResponseHandler {
   #settings = {
-    chance: 0.008,
+    chance: 0.001,
     messageGraceMult: 0.5,
     messages: new MessageArr([
       fuckerArr,
@@ -20,6 +20,16 @@ class RandomResponseHandler extends BaseResponseHandler {
       ':)',
       'W',
       'Disco Elysium',
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
+      "I don't even fuckin care anymore man",
       'Veganism.',
       'John Wick is back killing people once again.',
       'I must learn more.',
