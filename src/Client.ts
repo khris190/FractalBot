@@ -12,6 +12,7 @@ import SpecyficResponseHandler from './responses/SpecyficResponseHandler'
 import RandomResponseHandler from './responses/RandomResponseHandler'
 import GrokResponseHandler from './responses/GrokResponseHandler'
 import PingWishResponseHandler from './responses/PingWishResponseHandler'
+import LLMPingResponseHandler from './responses/LLMPingResponseHandler'
 
 export class Client {
   client
@@ -52,6 +53,7 @@ export class Client {
         if (await PingEveryoneResponseHandler.handleMessage(message)) return
         if (await GrokResponseHandler.handleMessage(message)) return
         if (await PingWishResponseHandler.handleMessage(message)) return
+        if (await LLMPingResponseHandler.handleMessage(message)) return // TODO: give this a switch
         if (await PingQuestionResponseHandler.handleMessage(message)) return
         SpecyficResponseHandler.handleMessage(message)
         RandomResponseHandler.handleMessage(message)

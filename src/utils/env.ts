@@ -8,6 +8,7 @@ const DATA_PATH = process.env.DATA_PATH ?? './data'
 const LOG_PATH = process.env.LOG_PATH ?? './logs'
 const DB_FILE = process.env.DB_FILE ?? 'db.sqlite'
 const SIMILARITY_ENDPOINT = process.env.SIMILARITY_ENDPOINT ?? 'localhost:8000'
+const LLM_ENDPOINT = process.env.LLM_ENDPOINT ?? 'localhost:8080'
 const SIMILARITY_TRESHOLD = Number(process.env.SIMILARITY_TRESHOLD) ?? 0.9
 const DB_PATH = path.resolve(DATA_PATH, DB_FILE)
 export default {
@@ -18,5 +19,6 @@ export default {
   DATA_PATH,
   LOG_PATH,
   SIMILARITY_ENDPOINT,
-  SIMILARITY_TRESHOLD
+  SIMILARITY_TRESHOLD,
+  LLM_ENDPOINT,
 }
