@@ -27,12 +27,12 @@ export default class Model {
   logger: ILogger = getLogger('model')
 
   constructor () {
-    this.logger.info('Chucha STARTING')
+    this.logger.info('Chucha LLM STARTING')
     this.chat = readFileSync(join(llmPath, 'prompt.txt'), 'utf8');
     // preload cache
     (async () => {
-      await this.chatWithChucha('a?')
-      this.logger.info('Chucha READY')
+      await this.chatWithChucha('Ready?')
+      this.logger.info('Chucha LLM READY')
     })()
   }
 

@@ -8,8 +8,8 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
   #settings = {
-    cooldownMs: 1000 * 100,
-    cooldownMessage: "I'm practicing self care, ever heard about it?",
+    cooldownMs: 1000 * 70,
+    cooldownMessage: 'Can you pipe down and give me a minute? Like, literally?',
   }
 
   lastMessageTime = 0
@@ -27,10 +27,15 @@ class LLMPingResponseHandler extends BaseResponseHandler {
       if (message.mentions.users.some((user, key, coll) => {
         return user.id === Client.client.user?.id
       })) {
+        if (this.model.busy) {
+          return false
+        }
         let response = this.#settings.cooldownMessage
         if (this.#checkCooldown()) {
           try {
-            response = await this.model.chatWithChucha(message.author.displayName + ': ' + message.cleanContent)
+            // const msg = message.cleanContent.replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
+            const msg = message.cleanContent
+            response = await this.model.chatWithChucha(message.author.displayName + ': ' + msg)
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'
