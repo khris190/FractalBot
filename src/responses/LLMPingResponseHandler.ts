@@ -33,8 +33,8 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         let response = this.#settings.cooldownMessage
         if (this.#checkCooldown()) {
           try {
-            // const msg = message.cleanContent.replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
-            const msg = message.cleanContent
+            const msg = message.cleanContent.replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
+            // const msg = message.cleanContent
             response = await this.model.chatWithChucha(message.author.displayName + ': ' + msg)
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
