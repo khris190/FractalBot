@@ -8,7 +8,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
   #settings = {
-    cooldownMs: 1000 * 70,
+    cooldownMs: 1000 * 60,
     cooldownMessage: 'Can you pipe down and give me a minute? Like, literally?',
   }
 
@@ -32,6 +32,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         }
         let response = this.#settings.cooldownMessage
         if (this.#checkCooldown()) {
+          message.channel.sendTyping()
           try {
             const msg = message.cleanContent.replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
             // const msg = message.cleanContent
@@ -40,8 +41,10 @@ class LLMPingResponseHandler extends BaseResponseHandler {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'
           }
+          ReplyHelper.respond(message, ResponseType.REPLY, { content: response })
+        } else {
+          ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
         }
-        ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
         // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
         this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
         return true
