@@ -1,4 +1,4 @@
-import { OmitPartialGroupDMChannel, Message } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, GuildMessageManager } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
@@ -22,6 +22,18 @@ class LLMPingResponseHandler extends BaseResponseHandler {
     return false
   }
 
+  async prepareMessage (message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    let res = ''
+    let msg = message
+    res = (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
+
+    while (msg?.reference?.messageId) {
+      msg = await (message.channel.messages as GuildMessageManager).fetch(msg.reference.messageId)
+      res = (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha') + '\n' + res
+    }
+    return res
+  }
+
   async _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<boolean> {
     if (Client.client.user?.id !== message.author.id) {
       if (message.mentions.users.some((user, key, coll) => {
@@ -34,9 +46,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         if (this.#checkCooldown()) {
           message.channel.sendTyping()
           try {
-            const msg = message.cleanContent.replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
-            // const msg = message.cleanContent
-            response = await this.model.chatWithChucha(message.author.displayName + ': ' + msg)
+            response = await this.model.chatWithChucha(await this.prepareMessage(message))
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'
@@ -45,7 +55,6 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         } else {
           ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
         }
-        // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
         this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
         return true
       }
