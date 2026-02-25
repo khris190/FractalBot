@@ -57,7 +57,7 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
               response = this.#settings.getCreativeMsg
             }
           }
-          ReplyHelper.respond(message, ResponseType.DELAY_SAME_CHANNEL, { content: response })
+          ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
           // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })
           this.logger.info('Replied to the @ping wish ', { author: message.author.displayName })
           return true
