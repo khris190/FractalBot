@@ -23,13 +23,16 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   }
 
   async prepareMessage (message: OmitPartialGroupDMChannel<Message<boolean>>) {
+    const repl = (msg : OmitPartialGroupDMChannel<Message<boolean>>) => {
+      msg.content = msg.content.replace(`<@${Client.client.user?.id}>`, '@Chucha')
+      return (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
+    }
     let res = ''
     let msg = message
-    res = (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
-
+    res = repl(msg)
     while (msg?.reference?.messageId) {
       msg = await (message.channel.messages as GuildMessageManager).fetch(msg.reference.messageId)
-      res = (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha') + '\n' + res
+      res = repl(msg) + '\n' + res
     }
     return res
   }
