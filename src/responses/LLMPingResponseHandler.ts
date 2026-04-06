@@ -1,14 +1,14 @@
-import { OmitPartialGroupDMChannel, Message, GuildMessageManager } from 'discord.js'
+import { OmitPartialGroupDMChannel, Message, GuildMessageManager, Attachment } from 'discord.js'
 import BaseResponseHandler from './BaseResponseHandler'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
-import Model from '../utils/AI/Model'
+import Model, { ModelImageData } from '../utils/AI/Model'
 
 class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
   #settings = {
-    cooldownMs: 1000 * 60,
+    cooldownMs: 1000 * 1,
     cooldownMessage: 'Can you pipe down and give me a minute? Like, literally?',
   }
 
@@ -27,14 +27,58 @@ class LLMPingResponseHandler extends BaseResponseHandler {
       msg.content = msg.content.replace(`<@${Client.client.user?.id}>`, '@Chucha')
       return (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
     }
-    let res = ''
+    const res : { msg: string, imgs: ModelImageData[] } = { msg: '', imgs: [] }
     let msg = message
-    res = repl(msg)
+    res.msg = repl(msg)
+
+    for (const [id, attachment] of msg.attachments) {
+      if (attachment instanceof Attachment) {
+        if (attachment.contentType?.startsWith('image/')) { // Lepiej sprawdzać ogólnie image/
+          const base64 = await this.encodeImageFromUrl(attachment.url)
+          const idNumber = parseInt(id)
+          res.imgs.push({ data: base64.replace(/data:image\/[^;]+;base64,/, ''), id: idNumber })
+          res.msg = res.msg + `[img-${id}]`
+        }
+      }
+    }
     while (msg?.reference?.messageId) {
       msg = await (message.channel.messages as GuildMessageManager).fetch(msg.reference.messageId)
-      res = repl(msg) + '\n' + res
+
+      let images = ''
+      for (const [id, attachment] of msg.attachments) {
+        if (attachment instanceof Attachment) {
+          if (attachment.contentType?.startsWith('image/')) { // Lepiej sprawdzać ogólnie image/
+            const base64 = await this.encodeImageFromUrl(attachment.url)
+            const idNumber = parseInt(id)
+            res.imgs.push({ data: base64.replace(/data:image\/[^;]+;base64,/, ''), id: idNumber })
+            images += `[img-${id}]`
+          }
+        }
+      }
+      res.msg = repl(msg) + images + '\n' + res.msg
     }
+    console.log(res.msg)
     return res
+  }
+
+  async encodeImageFromUrl (url: string): Promise<string> {
+    try {
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: status ${response.status}`)
+      }
+
+      // Pobieramy dane jako Buffer (ArrayBuffer w nowszych wersjach Node)
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      // Konwertujemy na Base64
+      return buffer.toString('base64')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      throw new Error(`Image encoding failed: ${msg}`)
+    }
   }
 
   async _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<boolean> {
@@ -49,7 +93,8 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         if (this.#checkCooldown()) {
           message.channel.sendTyping()
           try {
-            response = await this.model.chatWithChucha(await this.prepareMessage(message))
+            const userInput = await this.prepareMessage(message)
+            response = await this.model.chatWithChucha(userInput.msg, userInput.imgs)
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'
