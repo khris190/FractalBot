@@ -78,7 +78,6 @@ export default class Model {
     if (image) {
       payload.prompt = [{ prompt_string: fullPrompt, multimodal_data: image }]
     }
-    this.logger.error('payload', payload)
     try {
       const response = await fetch(url, {
         method: 'POST',
