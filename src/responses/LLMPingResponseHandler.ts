@@ -2,7 +2,7 @@ import { OmitPartialGroupDMChannel, Message, GuildMessageManager, Attachment } f
 import BaseResponseHandler from './BaseResponseHandler'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
-import Model, { ModelImageData } from '../utils/AI/Model'
+import Model from '../utils/AI/Model'
 
 class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
@@ -27,35 +27,23 @@ class LLMPingResponseHandler extends BaseResponseHandler {
       msg.content = msg.content.replace(`<@${Client.client.user?.id}>`, '@Chucha')
       return (msg.author.displayName + ': ' + msg.cleanContent).replaceAll(Client.client.user?.displayName ?? 'Chucha', 'Chucha')
     }
-    const res : { msg: string, imgs: ModelImageData[] } = { msg: '', imgs: [] }
+    const res : { msg: string, img: string } = { msg: '', img: '' }
     let msg = message
     res.msg = repl(msg)
 
     for (const [id, attachment] of msg.attachments) {
       if (attachment instanceof Attachment) {
         if (attachment.contentType?.startsWith('image/')) { // Lepiej sprawdzać ogólnie image/
-          const base64 = await this.encodeImageFromUrl(attachment.url)
-          const idNumber = parseInt(id)
-          res.imgs.push({ data: base64.replace(/data:image\/[^;]+;base64,/, ''), id: idNumber })
-          res.msg = res.msg + `[img-${id}]`
+          res.img = await this.encodeImageFromUrl(attachment.url)
         }
       }
     }
+    if (res.img.length > 0) {
+      res.msg += ' <__media__>'
+    }
     while (msg?.reference?.messageId) {
       msg = await (message.channel.messages as GuildMessageManager).fetch(msg.reference.messageId)
-
-      let images = ''
-      for (const [id, attachment] of msg.attachments) {
-        if (attachment instanceof Attachment) {
-          if (attachment.contentType?.startsWith('image/')) { // Lepiej sprawdzać ogólnie image/
-            const base64 = await this.encodeImageFromUrl(attachment.url)
-            const idNumber = parseInt(id)
-            res.imgs.push({ data: base64.replace(/data:image\/[^;]+;base64,/, ''), id: idNumber })
-            images += `[img-${id}]`
-          }
-        }
-      }
-      res.msg = repl(msg) + images + '\n' + res.msg
+      res.msg = repl(msg) + '\n' + res.msg
     }
     console.log(res.msg)
     return res
@@ -94,7 +82,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
           message.channel.sendTyping()
           try {
             const userInput = await this.prepareMessage(message)
-            response = await this.model.chatWithChucha(userInput.msg, userInput.imgs)
+            response = await this.model.chatWithChucha(userInput.msg, userInput.img)
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'

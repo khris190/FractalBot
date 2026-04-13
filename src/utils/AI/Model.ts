@@ -3,17 +3,17 @@ import { join } from 'node:path'
 import env from '../env'
 import ILogger from '../logger/ILogger'
 import getLogger from '../logger/getLogger'
+import { full } from '@huggingface/transformers'
 
 export interface ModelImageData {
   data: string; id: number
 }
 interface LlamaCompletionRequest {
-  prompt: string;
+  prompt: string | { prompt_string: string, multimodal_data: string }[];
   n_predict: number;
   temperature: number;
   stop: string[];
   repeat_penalty: number;
-  image_data?: ModelImageData[]; // Dodane dla multimodalności
 }
 
 const llmPath = join('/app', 'data', 'LLM')
@@ -28,12 +28,18 @@ interface LlamaCompletionResponse {
 }
 export default class Model {
   chat: string
+  thoughts?: string
   busy: boolean = false
   logger: ILogger = getLogger('model')
 
   constructor () {
     this.logger.info('Chucha LLM STARTING')
-    this.chat = readFileSync(join(llmPath, 'prompt.txt'), 'utf8');
+    this.chat = readFileSync(join(llmPath, 'prompt.txt'), 'utf8')
+    try {
+      this.thoughts = readFileSync(join(llmPath, 'thoughts.txt'), 'utf8')
+    } catch (error) {
+      this.logger.warn('no thoughts.txt file')
+    }
     // preload cache
     (async () => {
       try {
@@ -46,16 +52,19 @@ export default class Model {
     })()
   }
 
-  async chatWithChucha (userInput: string, imgs?: ModelImageData[]
+  async chatWithChucha (userInput: string, img?: string, thoughts?:string
   ): Promise<string> {
-    const fullPrompt = `${this.chat}${userInput}\nChucha:`
-    return await this.complete(fullPrompt, imgs)
+    let fullPrompt = `${this.chat}`
+    thoughts ??= this.thoughts
+    fullPrompt += `${userInput}`
+    if (thoughts) {
+      fullPrompt += `\n${thoughts}\n`
+    } else fullPrompt += '\nChucha: '
+    return await this.complete(fullPrompt, img)
   }
 
-  async complete (fullPrompt:string, imageData?: ModelImageData[]) {
-    if (this.busy) {
-      throw new Error('LLM Busy')
-    }
+  async complete (fullPrompt: string, image?: string) {
+    if (this.busy) throw new Error('LLM Busy')
     this.busy = true
     const url = env.LLM_ENDPOINT + '/completion'
     const payload: LlamaCompletionRequest = {
@@ -66,9 +75,10 @@ export default class Model {
       // stop: [],
       repeat_penalty: 1.1,
     }
-    if (imageData) {
-      payload.image_data = imageData
+    if (image) {
+      payload.prompt = [{ prompt_string: fullPrompt, multimodal_data: image }]
     }
+    this.logger.error('payload', payload)
     try {
       const response = await fetch(url, {
         method: 'POST',
