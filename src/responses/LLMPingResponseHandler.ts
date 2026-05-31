@@ -3,6 +3,7 @@ import BaseResponseHandler from './BaseResponseHandler'
 import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import Model from '../utils/AI/Model'
+import { settings } from '../settings'
 
 class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
@@ -46,7 +47,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
           return false
         }
         let response = this.#settings.cooldownMessage
-        if (this.#checkCooldown()) {
+        if (settings.ADMINS.some((a:string) => a === message.author.id) || this.#checkCooldown()) {
           message.channel.sendTyping()
           try {
             response = await this.model.chatWithChucha(await this.prepareMessage(message))
