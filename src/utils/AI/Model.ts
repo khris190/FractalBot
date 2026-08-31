@@ -42,34 +42,36 @@ export default class Model {
     }
 
     this.busy = true
-    const url = env.LLM_ENDPOINT + '/completion'
-    const fullPrompt = `${this.chat}${userInput}\nChucha:`
+    try {
+      const url = env.LLM_ENDPOINT + '/completion'
+      const fullPrompt = `${this.chat}${userInput}\nChucha:`
 
-    const payload: LlamaCompletionRequest = {
-      prompt: fullPrompt,
-      n_predict: 100,
-      temperature: 1.0,
-      stop: ['\n'],
-      repeat_penalty: 10.0,
+      const payload: LlamaCompletionRequest = {
+        prompt: fullPrompt,
+        n_predict: 100,
+        temperature: 1.0,
+        stop: ['\n'],
+        repeat_penalty: 10.0,
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = (await response.json()) as LlamaCompletionResponse
+      const res = data.content.trim()
+      writeFileSync(join(llmPath, 'history.txt'), `${userInput}\nChucha:${res}\n\n`, { flag: 'a+' })
+      return res
+    } finally {
+      this.busy = false
     }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-
-    this.busy = false
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const data = (await response.json()) as LlamaCompletionResponse
-    const res = data.content.trim()
-    writeFileSync(join(llmPath, 'history.txt'), `${userInput}\nChucha:${res}\n\n`, { flag: 'a+' })
-    return res
   }
 }

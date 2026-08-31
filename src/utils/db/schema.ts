@@ -15,6 +15,8 @@ export const ImageChannel = sqliteTable('imageChannel', {
   uniqueIndex('imageChannelIdx').on(table.channelId)
 ])
 
+// Currently unused by any code — kept for a planned channel-blacklist feature.
+// Safe to remove (along with its migrations) if that never materializes.
 export const MessageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
   id: int().primaryKey({ autoIncrement: true }),
   channelId: text().notNull(),

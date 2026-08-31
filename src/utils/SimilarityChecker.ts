@@ -11,7 +11,8 @@ export default class SimilarityChecker {
     const start = new Date().getTime()
     let result = 2
     try {
-      const body = JSON.stringify({ sentence, treshold: env.SIMILARITY_TRESHOLD })
+      // 'treshold' is the wire key expected by python/server.py — keep as-is
+      const body = JSON.stringify({ sentence, treshold: env.SIMILARITY_THRESHOLD })
       const response = await fetch(env.SIMILARITY_ENDPOINT, {
         headers: {
           Accept: 'application/json',
@@ -28,6 +29,6 @@ export default class SimilarityChecker {
       this.logger.error(error.message)
     }
     this.logger.info('SimilarityChecker execution', { res: result, duration: new Date().getTime() - start })
-    return result < env.SIMILARITY_TRESHOLD
+    return result < env.SIMILARITY_THRESHOLD
   }
 }

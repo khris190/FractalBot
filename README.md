@@ -85,8 +85,8 @@ Environment variables (via `.env`, see `src/utils/env.ts`):
 | `DATA_PATH` | `./data` | Data directory (images, LLM files, DB) |
 | `LOG_PATH` | `./logs` | Log directory |
 | `DB_FILE` | `db.sqlite` | SQLite filename inside DATA_PATH |
-| `SIMILARITY_ENDPOINT` | `localhost:8000` | Similarity service URL (docker-compose sets the internal one) |
-| `SIMILARITY_TRESHOLD` | 0.9 | Above this a wish counts as duplicate |
+| `SIMILARITY_ENDPOINT` | `localhost:5000` | Similarity service URL (docker-compose sets the internal one) |
+| `SIMILARITY_THRESHOLD` | 0.9 | Above this a wish counts as duplicate (`SIMILARITY_TRESHOLD` still accepted) |
 | `LLM_ENDPOINT` | `localhost:8080` | llama.cpp-style completion endpoint |
 
 Admins are hardcoded in `src/settings.ts`.

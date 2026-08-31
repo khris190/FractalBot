@@ -20,6 +20,10 @@ export class Queue<T> implements IQueue<T> {
     return this.storage.length
   }
 
+  // Note: substring search on stringified storage is intentional and safe for the current usage
+  // (number[] items): each item's brackets make matches exact, so no partial-index false positives.
+  // If this ever needs to be generalized or cleaned up, replace with:
+  //   return this.storage.some(e => JSON.stringify(e) === JSON.stringify(item))
   contains (item :T) {
     const a = JSON.stringify(this.storage)
     const b = JSON.stringify(item)
