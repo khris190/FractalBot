@@ -64,7 +64,7 @@ Registered in `Client.createIntervals()`:
 
 ### LLM integration
 
-`Model` (`src/utils/AI/Model.ts`) talks to a llama.cpp-style `/completion` endpoint (env `LLM_ENDPOINT`, default `localhost:8080`). Persona prompt lives in `data/LLM/prompt.txt`. Single-flight via a `busy` flag.
+`Model` (`src/utils/AI/Model.ts`) talks to an LLM server at env `LLM_ENDPOINT` (default `localhost:8080`). Two wire formats, switched by `LLM_MODE`: `llama` → llama.cpp `/completion`, `openai` → OpenAI-compatible `/v1/completions` (LM Studio). Response parsing accepts both shapes (`content` or `choices[0].text`). Persona prompt lives in `data/LLM/prompt.txt`. Single-flight via a `busy` flag.
 
 Chucha has two memory layers:
 - **Short-term** — per-conversation turns in SQLite (`conversationTurn` table, keyed by Discord message id). Each reply-chain is one thread; the whole thread is sent as context on every response. Stored once per message (no duplication).
@@ -95,7 +95,9 @@ Environment variables (via `.env`, see `src/utils/env.ts`):
 | `DB_FILE` | `db.sqlite` | SQLite filename inside DATA_PATH |
 | `SIMILARITY_ENDPOINT` | `localhost:5000` | Similarity service URL (docker-compose sets the internal one) |
 | `SIMILARITY_THRESHOLD` | 0.9 | Above this a wish counts as duplicate (`SIMILARITY_TRESHOLD` still accepted) |
-| `LLM_ENDPOINT` | `localhost:8080` | llama.cpp-style completion endpoint |
+| `LLM_ENDPOINT` | `localhost:8080` | LLM server host:port |
+| `LLM_MODE` | `llama` | `llama` = llama.cpp `/completion`; `openai` = OpenAI-compatible (LM Studio) `/v1/completions` |
+| `LLM_MODEL` | `local-model` | model identifier sent in openai mode (LM Studio ignores it, field is required by the API) |
 | `LLM_DATA_PATH` | `/app/data/LLM` | LLM data dir (prompt.txt, memory.txt, history.txt); overridable for tests |
 
 Admins are hardcoded in `src/settings.ts`.

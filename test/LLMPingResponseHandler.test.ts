@@ -21,6 +21,9 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`messageId\` text,
   \`role\` text NOT NULL,
   \`content\` text NOT NULL,
+  \`upvotes\` integer NOT NULL DEFAULT 0,
+  \`downvotes\` integer NOT NULL DEFAULT 0,
+  \`promoted\` integer NOT NULL DEFAULT 0,
   \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
 ); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
 
@@ -67,7 +70,7 @@ let chatCalls: string[] = []
 interface FakeMsg {
   id: string; author: { id: string, displayName: string }; content: string; cleanContent: string
   mentions: { users: any[] }; reference?: { messageId: string } | null
-  channel: any; reply: (payload: any) => Promise<{ id: string }>
+  channel: any; reply: (payload: any) => Promise<{ id: string, react?: (e: string) => Promise<void> }>
 }
 
 const parents: Record<string, FakeMsg> = {}
@@ -81,7 +84,8 @@ function makeMessage (opts: { id: string, authorId: string, content: string, men
     mentions: { users: opts.mentionChucha ? [{ id: BOT_ID }] : [] },
     reference: opts.parentIds?.length ? { messageId: opts.parentIds[0] } : null,
     channel,
-    reply: opts.replyTo ?? (async () => ({ id: `sent-${opts.id}` })),
+    // default sent-message exposes a no-op react so the handler's seeding doesn't error
+    reply: opts.replyTo ?? (async () => ({ id: `sent-${opts.id}`, react: async () => {} })),
   }
 }
 
@@ -176,4 +180,18 @@ test('LLM errors produce the fallback error reply', async () => {
   assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
   const last = replied[replied.length - 1]
   assert.ok(last.content!.includes('idiot of a creator'))
+})
+
+test('Chucha replies are seeded with 👍 and 👎 reactions', async () => {
+  reset()
+  ;(LLMPingResponseHandler as any).model.chatWithChucha = (threadId?: string) => { chatCalls.push(threadId ?? ''); return Promise.resolve('rate me') }
+  const reacted: string[] = []
+  const msg = makeMessage({
+    id: 'f1', authorId: settings.ADMINS[0], content: '<@100> hi', mentionChucha: true,
+    replyTo: async () => ({ id: 'sent-f1', react: async (e: string) => { reacted.push(e); return {} } }),
+  })
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  assert.ok(reacted.includes('👍'), 'thumbs-up seeded')
+  assert.ok(reacted.includes('👎'), 'thumbs-down seeded')
 })

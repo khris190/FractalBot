@@ -13,7 +13,8 @@ services:
       - DATA_PATH=/app/data
       - LOG_PATH=/app/logs
       - SIMILARITY_ENDPOINT=http://fractal-similarity:5000
-      - LLM_ENDPOINT=http://host.docker.internal:5555
+      - LLM_ENDPOINT=http://host.docker.internal:1234
+      # - LLM_ENDPOINT=http://host.docker.internal:5555
       # 1. Map the magic hostname to your machine's gateway
     extra_hosts:
       - "host.docker.internal:172.17.0.1"

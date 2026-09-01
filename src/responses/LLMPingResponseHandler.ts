@@ -73,6 +73,14 @@ class LLMPingResponseHandler extends BaseResponseHandler {
             // reference-walks dedupe it (no duplicate turns, no lost context)
             const sentMsg = await message.reply({ content: reply })
             conversationStore.addTurn(threadId, sentMsg.id, 'assistant', `Chucha: ${reply}`)
+            // Seed 👍/👎 so users can rate the answer. Votes are tracked in DB by messageId
+            // (see Client reaction listeners); a failure here must not undo the already-sent reply.
+            try {
+              await sentMsg.react('👍')
+              await sentMsg.react('👎')
+            } catch (e) {
+              this.logger.error('failed to add rating reactions', e as Error)
+            }
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'

@@ -25,6 +25,9 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`messageId\` text,
   \`role\` text NOT NULL,
   \`content\` text NOT NULL,
+  \`upvotes\` integer NOT NULL DEFAULT 0,
+  \`downvotes\` integer NOT NULL DEFAULT 0,
+  \`promoted\` integer NOT NULL DEFAULT 0,
   \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
 ); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
 
@@ -38,10 +41,12 @@ interface Captured { url: string, body: any }
 let captured: Captured[] = []
 type Responder = () => string | Promise<string>
 let responder: Responder = () => 'preload'
+// raw bodies served one-per-fetch (to simulate malformed/empty responses); falls back to {content: responder()}
+let rawBodies: unknown[] = []
 ;(globalThis as any).fetch = async (url: string, init: any) => {
   captured.push({ url, body: JSON.parse(init.body) })
-  const content = await responder()
-  return new Response(JSON.stringify({ content }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  const body = rawBodies.length > 0 ? rawBodies.shift()! : { content: await responder() }
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -50,6 +55,7 @@ const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/A
 function reset () {
   captured = []
   responder = () => 'preload'
+  rawBodies = []
   conversationStore.clearAll()
   for (const f of ['memory.txt', 'memoryTMP.txt', 'history.txt']) {
     try { rmSync(join(process.env.LLM_DATA_PATH!, f)) } catch {}
@@ -141,6 +147,50 @@ test('consolidateMemory is a no-op when the DB is empty', async () => {
   assert.ok(!existsSync(join(process.env.LLM_DATA_PATH!, 'memory.txt')))
 })
 
+test('consolidateMemory excludes downvoted answers from the transcript', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('dv1', 'u1', 'user', 'Alice: what is up')
+  conversationStore.addTurn('dv1', 'a1', 'assistant', 'Chucha: a bad answer')
+  conversationStore.recordVote('a1', false, true) // 👎 → more down than up
+
+  responder = () => 'notes'
+  await model.consolidateMemory()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('Alice: what is up'), 'question kept')
+  assert.ok(!req.body.prompt.includes('Chucha: a bad answer'), 'downvoted answer excluded')
+})
+
+test('consolidateMemory archives high-upvote answers (promoted) and skips them next run', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('up1', 'u2', 'user', 'Bob: tell me a fact')
+  conversationStore.addTurn('up1', 'a2', 'assistant', 'Chucha: great answer!')
+  conversationStore.recordVote('a2', true, true) // 👍 → more up than down
+
+  responder = () => 'great answer noted'
+  await model.consolidateMemory()
+
+  const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
+  assert.ok(memory.includes('great answer noted'))
+
+  // the high-upvote row survives as a promoted archive; everything else wiped
+  let allRows: any[] = []
+  for (const rows of conversationStore.getAllThreads().values()) allRows = allRows.concat(rows)
+  assert.equal(allRows.length, 1)
+  assert.equal(allRows[0].messageId, 'a2')
+  assert.equal(allRows[0].promoted, true)
+
+  // second run: only the promoted row remains → nothing new to distill (no LLM call)
+  const before = captured.length
+  responder = () => { throw new Error('should not be called') }
+  await model.consolidateMemory()
+  assert.equal(captured.length, before, 'no second LLM call for already-promoted rows')
+})
+
 test('appendMemory auto-compresses when memory.txt exceeds the size limit', async () => {
   reset()
   const model = await makeModel()
@@ -168,4 +218,36 @@ test('appendMemory does not compress when under the limit', async () => {
   const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
   assert.ok(memory.includes('old note'))
   assert.ok(memory.includes('another note'))
+})
+
+test('stop array always includes the thinking tags', async () => {
+  reset()
+  const model = await makeModel()
+
+  responder = () => 'ok'
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.deepEqual(req.body.stop, ["<think>", "</think>"])
+})
+
+test('empty responses are retried until a non-empty one arrives', async () => {
+  reset()
+  const model = await makeModel()
+
+  // first two attempts come back empty/whitespace, third succeeds
+  rawBodies = [{ content: '' }, { content: '   ' }]
+  responder = () => 'finally here'
+  assert.equal(await model.chatWithChucha(), 'finally here')
+  // preload (1) + 3 attempts
+  assert.equal(captured.length, 4)
+})
+
+test('response without content field is retried then throws', async () => {
+  reset()
+  const model = await makeModel()
+
+  // simulate llama.cpp returning 200 with an unexpected body (no content key) on every attempt
+  rawBodies = [{ error: 'model not loaded' }, { error: 'model not loaded' }, { error: 'model not loaded' }]
+  await assert.rejects(model.chatWithChucha(), /empty response after 3 attempts/)
 })

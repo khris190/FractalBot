@@ -22,6 +22,9 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`messageId\` text,
   \`role\` text NOT NULL,
   \`content\` text NOT NULL,
+  \`upvotes\` integer NOT NULL DEFAULT 0,
+  \`downvotes\` integer NOT NULL DEFAULT 0,
+  \`promoted\` integer NOT NULL DEFAULT 0,
   \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
 ); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
 
@@ -35,8 +38,8 @@ test('addTurn stores a turn and getThread returns it in insertion order', () => 
   conversationStore.addTurn('t1', null, 'assistant', 'Chucha: hello')
   const turns = conversationStore.getThread('t1')
   assert.equal(turns.length, 2)
-  assert.deepEqual(turns[0], { messageId: 'm1', role: 'user', content: 'Alice: hi' })
-  assert.deepEqual(turns[1], { messageId: null, role: 'assistant', content: 'Chucha: hello' })
+  assert.deepEqual(turns[0], { messageId: 'm1', role: 'user', content: 'Alice: hi', upvotes: 0, downvotes: 0, promoted: false })
+  assert.deepEqual(turns[1], { messageId: null, role: 'assistant', content: 'Chucha: hello', upvotes: 0, downvotes: 0, promoted: false })
 })
 
 test('addTurn dedupes by messageId (no duplicate rows)', () => {
@@ -71,4 +74,41 @@ test('clearThread removes only that thread; clearAll wipes everything', () => {
   const total = conversationStore.clearAll()
   assert.ok(total >= 3) // t1(2) + t2(1); t3 already cleared
   assert.equal(conversationStore.getAllThreads().size, 0)
+})
+
+test('recordVote tracks 👍/👎 net counts and clamps at zero', () => {
+  conversationStore.clearAll()
+  conversationStore.addTurn('v1', 'vm1', 'assistant', 'Chucha: a')
+  conversationStore.recordVote('vm1', true, true)   // +1 up
+  conversationStore.recordVote('vm1', true, true)   // +1 up
+  conversationStore.recordVote('vm1', false, true)  // +1 down
+  let t = conversationStore.getThread('v1')[0]
+  assert.equal(t.upvotes, 2)
+  assert.equal(t.downvotes, 1)
+
+  // removing votes decrements; can't go below zero
+  conversationStore.recordVote('vm1', true, false)  // -1 up
+  conversationStore.recordVote('vm1', true, false)  // -1 up
+  conversationStore.recordVote('vm1', true, false)  // would be -1 → clamped to 0
+  t = conversationStore.getThread('v1')[0]
+  assert.equal(t.upvotes, 0)
+  assert.equal(t.downvotes, 1)
+
+  // unknown messageId is a no-op (no throw)
+  conversationStore.recordVote('does-not-exist', true, true)
+})
+
+test('markPromoted flags rows; clearUnpromoted keeps only promoted rows', () => {
+  conversationStore.clearAll()
+  conversationStore.addTurn('p1', 'pm1', 'assistant', 'Chucha: great answer')
+  conversationStore.addTurn('p1', 'pm2', 'user', 'Alice: thanks!')
+
+  conversationStore.markPromoted(['pm1'])
+  const cleared = conversationStore.clearUnpromoted()
+  assert.equal(cleared, 1) // pm2 (unpromoted user turn) wiped; pm1 kept
+
+  const remaining = conversationStore.getThread('p1')
+  assert.equal(remaining.length, 1)
+  assert.equal(remaining[0].messageId, 'pm1')
+  assert.equal(remaining[0].promoted, true)
 })

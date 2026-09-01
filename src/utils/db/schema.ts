@@ -36,8 +36,12 @@ export const ConversationTurn = sqliteTable('conversationTurn', {
   messageId: text().unique(), // discord message id this turn corresponds to
   role: text().notNull(), // 'user' | 'assistant'
   content: text().notNull(),
+  upvotes: int().notNull().default(0), // 👍 count (bot's own seed reaction excluded)
+  downvotes: int().notNull().default(0), // 👎 count
+  promoted: int('promoted').notNull().default(0), // 1 = kept as a "best message" after /remember
   createdAt: text('createdAt')
     .notNull()
+    .$onUpdate(() => sql`(current_timestamp)`)
     .default(sql`(current_timestamp)`),
 })
 
