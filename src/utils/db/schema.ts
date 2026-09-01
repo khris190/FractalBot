@@ -30,6 +30,17 @@ export const MessageBlacklistChannel = sqliteTable('messageBlacklistChannel', {
 }, (table) => [
   uniqueIndex('messageBlacklistChannelIdx').on(table.channelId)
 ])
+export const ConversationTurn = sqliteTable('conversationTurn', {
+  id: int().primaryKey({ autoIncrement: true }),
+  threadId: text().notNull(), // conversation key (root message id of the reply-chain)
+  messageId: text().unique(), // discord message id this turn corresponds to
+  role: text().notNull(), // 'user' | 'assistant'
+  content: text().notNull(),
+  createdAt: text('createdAt')
+    .notNull()
+    .default(sql`(current_timestamp)`),
+})
+
 export const GuildData = sqliteTable('guildData', {
   id: text().primaryKey(),
   lastWishTimeStamp: int(),

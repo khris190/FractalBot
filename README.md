@@ -51,6 +51,7 @@ Current commands:
 - `/catdeploymentmode` — toggle current channel in the image whitelist DB table.
 - `/imdebug` — send the surprise image to the current channel now.
 - `/arbitrarytenets <policy_definition_set>` — make the bot say something as if it were a normal message.
+- `/remember` (admin) — compress all short-term conversations into long-term memory.txt via LLM, then clear them. Slow; shows "Compressing memory..." while running.
 
 ### Intervals
 
@@ -63,7 +64,13 @@ Registered in `Client.createIntervals()`:
 
 ### LLM integration
 
-`Model` (`src/utils/AI/Model.ts`) talks to a llama.cpp-style `/completion` endpoint (env `LLM_ENDPOINT`, default `localhost:8080`). Persona prompt lives in `data/LLM/prompt.txt`; conversation history is appended to `data/LLM/history.txt`. Single-flight via a `busy` flag.
+`Model` (`src/utils/AI/Model.ts`) talks to a llama.cpp-style `/completion` endpoint (env `LLM_ENDPOINT`, default `localhost:8080`). Persona prompt lives in `data/LLM/prompt.txt`. Single-flight via a `busy` flag.
+
+Chucha has two memory layers:
+- **Short-term** — per-conversation turns in SQLite (`conversationTurn` table, keyed by Discord message id). Each reply-chain is one thread; the whole thread is sent as context on every response. Stored once per message (no duplication).
+- **Long-term** — `data/LLM/memory.txt`, loaded into the prompt on every call. Populated via `/remember` (admin command), which uses the LLM to distill all short-term conversations into concise notes, appends them to memory.txt, then clears the short-term DB.
+
+If memory.txt exceeds 10KB it is auto-compressed by the LLM before appending (atomic swap: write `memoryTMP.txt`, rename over). `history.txt` remains a raw audit log of input/output pairs — never read back.
 
 ## Data & storage
 
@@ -72,6 +79,7 @@ Registered in `Client.createIntervals()`:
   - `imageChannel` — channels eligible for the random image interval.
   - `messageBlacklistChannel` — defined but currently unused by code.
   - `guildData` — per-guild state (last wish timestamp).
+  - `conversationTurn` — Chucha's short-term memory: one row per message in a reply-chain thread (`threadId` = root message id, unique `messageId`, role, content).
 
 ## Configuration
 

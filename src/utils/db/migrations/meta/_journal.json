@@ -22,6 +22,13 @@
       "when": 1749846888147,
       "tag": "0002_lame_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788216369159,
+      "tag": "0003_redundant_ben_parker",
+      "breakpoints": true
     }
   ]
 }
