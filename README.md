@@ -96,6 +96,7 @@ Environment variables (via `.env`, see `src/utils/env.ts`):
 | `SIMILARITY_ENDPOINT` | `localhost:5000` | Similarity service URL (docker-compose sets the internal one) |
 | `SIMILARITY_THRESHOLD` | 0.9 | Above this a wish counts as duplicate (`SIMILARITY_TRESHOLD` still accepted) |
 | `LLM_ENDPOINT` | `localhost:8080` | llama.cpp-style completion endpoint |
+| `LLM_DATA_PATH` | `/app/data/LLM` | LLM data dir (prompt.txt, memory.txt, history.txt); overridable for tests |
 
 Admins are hardcoded in `src/settings.ts`.
 

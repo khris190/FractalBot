@@ -13,7 +13,7 @@ interface LlamaCompletionRequest {
   repeat_penalty: number;
 }
 
-const llmPath = join('/app', 'data', 'LLM')
+const llmPath = env.LLM_DATA_PATH
 const PROMPT_FILE = join(llmPath, 'prompt.txt')
 const MEMORY_FILE = join(llmPath, 'memory.txt')
 const MEMORY_TMP_FILE = join(llmPath, 'memoryTMP.txt')

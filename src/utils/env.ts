@@ -12,6 +12,8 @@ const SIMILARITY_ENDPOINT = process.env.SIMILARITY_ENDPOINT ?? 'localhost:5000'
 const LLM_ENDPOINT = process.env.LLM_ENDPOINT ?? 'localhost:8080'
 // Old misspelled name kept as fallback for existing .env files
 const SIMILARITY_THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD ?? process.env.SIMILARITY_TRESHOLD) || 0.9
+// Overridable so tests can point at a temp dir; production uses the docker mount
+const LLM_DATA_PATH = process.env.LLM_DATA_PATH ?? '/app/data/LLM'
 const DB_PATH = path.resolve(DATA_PATH, DB_FILE)
 export default {
   TOKEN,
@@ -19,6 +21,7 @@ export default {
   GUILD_ID,
   DB_PATH,
   DATA_PATH,
+  LLM_DATA_PATH,
   LOG_PATH,
   SIMILARITY_ENDPOINT,
   SIMILARITY_THRESHOLD,

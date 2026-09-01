@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "test": "ts-node test.ts",
+    "test": "node -r ts-node/register --test 'test/*.test.ts'",
     "start": "ts-node index.ts"
   },
   "author": "",
