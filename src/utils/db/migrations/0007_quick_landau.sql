@@ -1,0 +1,1 @@
+DROP INDEX `movies_title_unique`;

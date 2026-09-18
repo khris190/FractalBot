@@ -59,7 +59,7 @@ export const GuildData = sqliteTable('guildData', {
 
 export const Movies = sqliteTable('movies', {
   id: text().primaryKey(),
-  title: text().notNull().unique(),
+  title: text().notNull(),
   watched: integer({ mode: 'boolean' }),
   updatedAt: text('updatedAt')
     .notNull()
