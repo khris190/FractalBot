@@ -66,7 +66,7 @@ export default class Model {
       const turns = conversationStore.getThread(threadId)
       if (turns.length > 0) {
         // turns are stored pre-formatted ("Name: text" / "Chucha: response")
-        shortTerm = `\nRecent conversation:\n${turns.map((t) => t.content).join('\n')}\n`
+        shortTerm = `\nRecent conversation:${turns.map((t) => t.content).join('\n')}`
       }
     }
 
