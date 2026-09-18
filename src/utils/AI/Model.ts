@@ -33,7 +33,7 @@ const HISTORY_FILE = join(llmPath, "history.txt");
 // Max bytes before memory.txt gets auto-compressed via LLM on next append
 const MEMORY_MAX_SIZE = 10_000;
 // Small local models occasionally return nothing (e.g. they start "thinking" and hit the stop string immediately) — retry a few times before giving up
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 // Stop generation if the model starts emitting thinking tags, so it can't burn the whole token budget on reasoning
 const THINKING_STOP_STRINGS = ["<think>", "</think>"];
 
@@ -47,7 +47,7 @@ export default class Model {
     this.logger.info("Chucha LLM STARTING");
     this.chat = readFileSync(PROMPT_FILE, "utf8");
     // preload cache (queued like everything else); a failure here must not kill the bot
-    this.enqueue(() => this.complete(`${this.chat}Ready?\nChucha:`))
+    this.enqueue(() => this.complete(`${this.buildPrompt()}Ready?\nChucha:`, 2))
       .then(() => this.logger.info("Chucha LLM READY"))
       .catch((e) => this.logger.error("Chucha LLM preload failed", e as Error));
   }
@@ -61,18 +61,20 @@ export default class Model {
   }
 
   private buildPrompt(threadId?: string): string {
-    let shortTerm = "";
+    let shortTerm = ""
     if (threadId) {
       const turns = conversationStore.getThread(threadId);
       if (turns.length > 0) {
         // turns are stored pre-formatted ("Name: text" / "Chucha: response")
-        shortTerm = `\nRecent conversation:\n${turns.map((t) => t.content).join("\n")}\n`;
+        shortTerm = `\nRecent conversation:\n${turns.map((t) => t.content).join("\n")}\n`
       }
     }
 
     // prompt.txt ends with a newline; keep "Chucha:" on its own line
     const memory = this.loadMemory();
-    return `${this.chat}\n${memory ? `\n${memory}` : ""}${shortTerm}Chucha:`;
+    return `${this.chat}\n${memory ? `\n${memory}` : ''}`
+    + '\nBased on the transcript provided and the established personality and memory of Chucha, here is how the bot responded.Remembering Chucha\'s constraints: Format: Strictly ONE line only. Lore Blackout: NEVER mention lore that sets up your personality. Persona: Fractured, glitching AI. Mix existential dread and profanity. Be volatile/nihilistic/distracted.'
+    + `\n${shortTerm}Chucha:`
   }
 
   // Serialize all LLM calls through a promise chain (model is single-flight);
@@ -111,7 +113,7 @@ export default class Model {
       const stop = [...THINKING_STOP_STRINGS, ...extraStop];
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const content = await this.requestCompletion(
-          prompt,
+          prompt + `${THINKING_STOP_STRINGS[0]}Context loaded. Persona: Chucha. Tone: Blunt, unfiltered, anti-corporate/anti-mundane. Constraint: <100 tokens total output. No meta-commentary. Just the raw response to the current chat state. The soup rant is done. Next move? Stay in character. Maybe react to the silence or double down on the absurdity. Keep it short. Swear if needed. Don't explain. Just be Chucha.${THINKING_STOP_STRINGS[1]}`,
           n_predict,
           temperature,
           stop,
@@ -121,6 +123,7 @@ export default class Model {
           `LLM returned an empty response (attempt ${attempt}/${MAX_ATTEMPTS})`,
         );
       }
+      console.log()
       throw new Error(`LLM returned an empty response after ${MAX_ATTEMPTS} attempts`);
     } finally {
       this.busy = false;
@@ -244,8 +247,8 @@ export default class Model {
 
       if (transcript.trim() === "") return; // nothing new to distill
 
-      const compressionPrompt = `Summarize these Discord conversations into concise notes worth remembering long-term: what happened, who said important things, facts about people. Be brief.\n\n${transcript}\n\nNotes:`;
-      const notes = await this.complete(compressionPrompt, 300, 0.3);
+      const compressionPrompt = `${this.loadMemory()}${transcript}Summarize these Discord conversations also taking into consideration previous memory into concise notes worth remembering long-term: what happened, who said important things, facts about people. Be brief.\nNotes:`;
+      const notes = await this.complete(compressionPrompt, 1000);
 
       if (notes) {
         // already inside the queue — use the raw writer to avoid re-enqueueing
@@ -283,7 +286,7 @@ export default class Model {
     const content = readFileSync(MEMORY_FILE, "utf8");
     const compressionPrompt = `Compress these conversation notes into fewer, more concise lines. Keep all important facts.\n\n${content}\n\nCompressed notes:`;
 
-    const compressed = await this.complete(compressionPrompt, 500, 0.2);
+    const compressed = await this.complete(compressionPrompt, 2000);
 
     // Atomic swap: write to TMP then rename over memory.txt
     writeFileSync(MEMORY_TMP_FILE, compressed + "\n");

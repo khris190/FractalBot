@@ -36,6 +36,20 @@
       "when": 1788290042597,
       "tag": "0004_sloppy_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789765946874,
+      "tag": "0005_oval_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789769575504,
+      "tag": "0006_charming_misty_knight",
+      "breakpoints": true
     }
   ]
 }

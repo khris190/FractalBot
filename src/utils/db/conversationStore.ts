@@ -22,7 +22,7 @@ const store = {
 
   // Apply a single 👍/👎 reaction change to the turn that owns `messageId`.
   // Counts are net (add vs remove) and clamped at zero so a removed vote can't go negative.
-  recordVote (messageId: string, isUpvote: boolean, added: boolean): boolean {
+  recordVote(messageId: string, isUpvote: boolean, added: boolean): boolean {
     const row = db.select().from(ConversationTurn).where(eq(ConversationTurn.messageId, messageId)).get()
     if (!row) return false // not one of our stored turns (e.g. a user message we never tracked)
     const delta = added ? 1 : -1

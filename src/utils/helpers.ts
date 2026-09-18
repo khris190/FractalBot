@@ -31,8 +31,12 @@ export function sleep (ms:number) {
 }
 
 export async function hiddenInteractionReply (interaction: ChatInputCommandInteraction, message: string) {
-  await interaction.reply({
-    content: message,
-    flags: MessageFlags.Ephemeral
-  })
+  try {
+    await interaction.reply({
+      content: message,
+      flags: MessageFlags.Ephemeral
+    })
+  } catch (error) {
+    console.log(error)
+  }
 }

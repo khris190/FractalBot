@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { text, int, sqliteTable, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { text, int, sqliteTable, uniqueIndex, integer } from 'drizzle-orm/sqlite-core'
 
 export const ImageChannel = sqliteTable('imageChannel', {
   id: int().primaryKey({ autoIncrement: true }),
@@ -48,10 +48,24 @@ export const ConversationTurn = sqliteTable('conversationTurn', {
 export const GuildData = sqliteTable('guildData', {
   id: text().primaryKey(),
   lastWishTimeStamp: int(),
+  moviesChannel: text(),
   updatedAt: text('updatedAt')
     .notNull()
     .$onUpdate(() => sql`(current_timestamp)`),
   createdAt: text('createdAt')
     .notNull()
     .default(sql`(current_timestamp)`),
+})
+
+export const Movies = sqliteTable('movies', {
+  id: text().primaryKey(),
+  title: text().notNull().unique(),
+  watched: integer({ mode: 'boolean' }),
+  updatedAt: text('updatedAt')
+    .notNull()
+    .$onUpdate(() => sql`(current_timestamp)`),
+  createdAt: text('createdAt')
+    .notNull()
+    .default(sql`(current_timestamp)`),
+
 })

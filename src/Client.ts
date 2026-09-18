@@ -15,6 +15,7 @@ import { Defer } from "./utils/helpers";
 import ILogger from "./utils/logger/ILogger";
 import getLogger from "./utils/logger/getLogger";
 import RandomImageInterval from "./intervals/RandomImage";
+import MemoryConsolidationInterval from "./intervals/MemoryConsolidation";
 import PingEveryoneResponseHandler from "./responses/PingEveryoneResponseHandler";
 import PingQuestionResponseHandler from "./responses/PingQuestionResponseHandler";
 import SpecyficResponseHandler from "./responses/SpecyficResponseHandler";
@@ -91,12 +92,12 @@ export class Client {
       const isDownvote = reaction.emoji.name === "👎";
       if (isUpvote || isDownvote) {
         const updated = conversationStore.recordVote(
-          reaction.messageId,
+          reaction.message.id,
           isUpvote,
           added,
         );
         this.logger.info("Recorded vote on Chucha answer", {
-          messageId: reaction.messageId,
+          messageId: reaction.message.id,
           vote: isUpvote ? "up" : "down",
           added,
           updated,
@@ -189,6 +190,11 @@ export class Client {
     this.intervals.push(
       setInterval(() => {
         RandomImageInterval.callback(this, this.logger);
+      }, 60 * 1000),
+      // Runs the /remember consolidation once a day at 05:00 (Polish time).
+      // Checked every minute; self-guards so it fires exactly once per Warsaw calendar day.
+      setInterval(() => {
+        MemoryConsolidationInterval.callback(this, this.logger);
       }, 60 * 1000),
     );
   }
