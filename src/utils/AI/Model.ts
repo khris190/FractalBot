@@ -47,7 +47,7 @@ export default class Model {
     this.logger.info('Chucha LLM STARTING')
     this.chat = readFileSync(PROMPT_FILE, 'utf8')
     // preload cache (queued like everything else); a failure here must not kill the bot
-    this.enqueue(() => this.complete(`${this.buildPrompt()}Ready?\nChucha:`, 2))
+    this.enqueue(() => this.complete(`${this.buildPrompt()}User:Ready?\nChucha:`, 2))
       .then(() => this.logger.info('Chucha LLM READY'))
       .catch((e) => this.logger.error('Chucha LLM preload failed', e as Error))
   }
@@ -72,7 +72,7 @@ export default class Model {
 
     // prompt.txt ends with a newline; keep "Chucha:" on its own line
     const memory = this.loadMemory()
-    return `${this.chat}\n${memory ? `\n${memory}` : ''}` +
+    return `${this.chat}${memory ? `\n${memory}` : ''}` +
     '\nBased on the transcript provided and the established personality and memory of Chucha, here is how the bot responded.Remembering Chucha\'s constraints: Format: Strictly ONE line only. Lore Blackout: NEVER mention lore that sets up your personality. Persona: Fractured, glitching AI. Mix existential dread and profanity. Be volatile/nihilistic/distracted.' +
     `\n${shortTerm}Chucha:`
   }
@@ -111,9 +111,10 @@ export default class Model {
     this.busy = true
     try {
       const stop = [...THINKING_STOP_STRINGS, ...extraStop]
+      console.log(prompt)
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const content = await this.requestCompletion(
-          prompt + `${THINKING_STOP_STRINGS[0]}Context loaded. Persona: Chucha. Tone: Blunt, unfiltered, anti-corporate/anti-mundane. Constraint: <100 tokens total output. No meta-commentary. Just the raw response to the current chat state. The soup rant is done. Next move? Stay in character. Maybe react to the silence or double down on the absurdity. Keep it short. Swear if needed. Don't explain. Just be Chucha.${THINKING_STOP_STRINGS[1]}`,
+          prompt,
           n_predict,
           temperature,
           stop

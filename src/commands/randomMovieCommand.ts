@@ -41,13 +41,11 @@ class RandomMovieCommand extends BaseChatCommand {
       hiddenInteractionReply(interaction, "Apparently this server doesn't exist, not my problem")
       return
     }
-    console.log(guild, guild.moviesChannel, !guild.moviesChannel)
     if (!guild.moviesChannel) {
       guild.moviesChannel = interaction.channel?.id || ''
       await db.update(GuildData).set(guild).where(eq(GuildData.id, guild.id))
     }
 
-    console.log(interaction.channel?.id, guild.moviesChannel, interaction.channel?.id !== guild.moviesChannel)
     if (interaction.channel?.id !== guild.moviesChannel) {
       hiddenInteractionReply(interaction, 'Tomek kurwo urwiesz mi od internetu')
       return
