@@ -74,7 +74,7 @@ export default class Model {
     const memory = this.loadMemory()
     return `${this.chat}${memory ? `\n${memory}` : ''}` +
     '\nBased on the transcript provided and the established personality and memory of Chucha, here is how the bot responded.Remembering Chucha\'s constraints: Format: Strictly ONE line only. Lore Blackout: NEVER mention lore that sets up your personality. Persona: Fractured, glitching AI. Mix existential dread and profanity. Be volatile/nihilistic/distracted.' +
-    `\n${shortTerm}Chucha:`
+    `\n${shortTerm}\nChucha:`
   }
 
   // Serialize all LLM calls through a promise chain (model is single-flight);
