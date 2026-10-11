@@ -48,14 +48,14 @@ class PingQuestionResponseHandler extends BaseResponseHandler {
         if (message.content.replace(/<@\d+>/, '').toLowerCase().trim().startsWith('i wish')) {
           let response = this.#settings.cooldownMessage
           if (this.#checkCooldown(message.guildId ?? '')) {
-            if (await this.similarityChecker.checkSimilarity(
-              message.content.replace(/<@\d+>/, '').toLowerCase().trim() + ' #' + message.member?.nickname)
-            ) {
-              const res = this.#settings.messages.getRandom()
-              response = res.choice
-            } else {
-              response = this.#settings.getCreativeMsg
-            }
+            // if (await this.similarityChecker.checkSimilarity(
+            //   message.content.replace(/<@\d+>/, '').toLowerCase().trim() + ' #' + message.member?.nickname)
+            // ) {
+            const res = this.#settings.messages.getRandom()
+            response = res.choice
+            // } else {
+            //   response = this.#settings.getCreativeMsg
+            // }
           }
           ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
           // message.reply({ content: response, flags: MessageFlags.SuppressNotifications })

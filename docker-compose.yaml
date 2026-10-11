@@ -19,12 +19,12 @@ services:
     extra_hosts:
       - "host.docker.internal:172.17.0.1"
 
-  fractal-similarity:
-    container_name: fractal-similarity
-    build:
-      context: .
-      target: python
-    logging:
-      driver: none
-    expose:
-      - "5000" # Expose port 5000 to other services
+  # fractal-similarity:
+  #   container_name: fractal-similarity
+  #   build:
+  #     context: .
+  #     target: python
+  #   logging:
+  #     driver: none
+  #   expose:
+  #     - "5000" # Expose port 5000 to other services
