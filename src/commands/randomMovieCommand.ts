@@ -55,7 +55,6 @@ class RandomMovieCommand extends BaseChatCommand {
     const movies = await this.getMoviesUntill(interaction, movLast?.id)
     movies.forEach(m => {
       const watched = !!m.reactions.cache.get('✅')
-      console.log({ id: m.id, title: m.content, watched })
       db.insert(Movies)
         .values({ id: m.id, title: m.content, watched })
         .onConflictDoUpdate({ target: Movies.id, set: { watched } })
@@ -63,7 +62,6 @@ class RandomMovieCommand extends BaseChatCommand {
     })
     while (true) {
       const mov = db.select().from(Movies).where(eq(Movies.watched, false)).orderBy(sql`RANDOM()`).get()
-      console.log(mov)
       if (mov) {
       // get a random unwatched movie from db
         const m = await interaction.channel?.messages.fetch(mov.id)

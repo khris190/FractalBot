@@ -111,7 +111,6 @@ export default class Model {
     this.busy = true
     try {
       const stop = [...THINKING_STOP_STRINGS, ...extraStop]
-      console.log(prompt)
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const content = await this.requestCompletion(
           prompt,
@@ -124,7 +123,6 @@ export default class Model {
           `LLM returned an empty response (attempt ${attempt}/${MAX_ATTEMPTS})`
         )
       }
-      console.log()
       throw new Error(`LLM returned an empty response after ${MAX_ATTEMPTS} attempts`)
     } finally {
       this.busy = false
