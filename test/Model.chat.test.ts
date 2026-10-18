@@ -52,6 +52,8 @@ let statuses: number[] = []
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { stripChuchaPrefix, stripThinkPrefix, isThinkMessage } = require('../src/utils/AI/ChatCompletionBackend') as typeof import('../src/utils/AI/ChatCompletionBackend')
 
 function reset () {
   captured = []
@@ -256,6 +258,62 @@ test('chat mode: system message carries the shared constraint block', async () =
   const system = captured[captured.length - 1].body.messages[0].content
   assert.ok(system.includes('Strictly ONE line only'), 'format constraint present in chat mode')
   assert.ok(system.includes('Fractured, glitching AI'), 'persona constraint present in chat mode')
+})
+
+test('stripChuchaPrefix removes leading speaker labels (case-insensitive, repeated)', () => {
+  assert.equal(stripChuchaPrefix('chucha: hello'), 'hello')
+  assert.equal(stripChuchaPrefix('Chucha: hi'), 'hi')
+  assert.equal(stripChuchaPrefix('chucha: chucha: hello'), 'hello')
+  assert.equal(stripChuchaPrefix('chucha:no space'), 'no space')
+  assert.equal(stripChuchaPrefix('hello'), 'hello')
+  assert.equal(stripChuchaPrefix('I am Chucha: the bot'), 'I am Chucha: the bot')
+})
+
+test('isThinkMessage / stripThinkPrefix match only the word "think" at the start', () => {
+  assert.ok(isThinkMessage('think why is the sky blue'))
+  assert.ok(isThinkMessage('THINK: why is the sky blue'))
+  assert.ok(isThinkMessage('think'))
+  assert.ok(!isThinkMessage('thinking why'))
+  assert.ok(!isThinkMessage('thirsty'))
+  assert.ok(!isThinkMessage('please think about it'))
+  assert.equal(stripThinkPrefix('think why'), 'why')
+  assert.equal(stripThinkPrefix('think: why'), 'why')
+  assert.equal(stripThinkPrefix('THINK:why'), 'why')
+  assert.equal(stripThinkPrefix('thinking why'), 'thinking why')
+})
+
+test('chat mode: leading "chucha:" prefix is stripped from the response', async () => {
+  reset()
+  responder = () => ({ choices: [{ message: { content: 'chucha: hello there' } }] })
+  const model = await makeModel()
+
+  assert.equal(await model.chatWithChucha(), 'hello there')
+})
+
+test('chat mode: "think" prefix is stripped from the current user turn', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'think: why is the sky blue')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'because' } }] })
+  await model.chatWithChucha('th1')
+
+  const userContent = captured[captured.length - 1].body.messages[1].content
+  assert.ok(userContent.includes('why is the sky blue'), 'clean question kept')
+  assert.ok(!userContent.includes('think'), 'trigger prefix stripped from payload')
+  assert.equal(captured[captured.length - 1].body.chat_template_kwargs, undefined)
+})
+
+test('chat mode: non-trigger turns ("thinking...") are not modified', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'thinking why is the sky blue')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'because' } }] })
+  await model.chatWithChucha('th1')
+
+  const userContent = captured[captured.length - 1].body.messages[1].content
+  assert.ok(userContent.includes('thinking why is the sky blue'))
 })
 
 test('chat mode: concurrency is serialized (only one request at a time)', async () => {

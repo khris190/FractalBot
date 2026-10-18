@@ -4,6 +4,23 @@ import conversationStore from '../db/conversationStore'
 import { loadMemory, PROMPT_FILE, CHUCHA_CONSTRAINTS } from './prompt'
 import { ChatCompletionRequest, ChatContentPart } from './types'
 
+// Word-boundary "think" at the start of a message (case-insensitive), optionally followed by ":" and/or whitespace
+const THINK_TRIGGER = /^\s*think(?:\s*:\s*|\s|$)/i
+
+export function isThinkMessage (s: string): boolean {
+  return THINK_TRIGGER.test(s)
+}
+
+// Strip the leading "think" trigger (and any ":") so the model sees a clean question
+export function stripThinkPrefix (s: string): string {
+  return s.replace(THINK_TRIGGER, '')
+}
+
+// Strip leading "chucha:" speaker labels from a response (all leading occurrences, case-insensitive)
+export function stripChuchaPrefix (s: string): string {
+  return s.replace(/^(?:\s*chucha\s*:\s*)+/i, '').trim()
+}
+
 /** OpenAI /v1/chat/completions (system + user messages) */
 export class ChatCompletionBackend {
   async request (
@@ -15,7 +32,7 @@ export class ChatCompletionBackend {
     imageUrl?: string
   ): Promise<string> {
     const systemMessage = this.buildSystemMessage()
-    const userContent = this.buildUserContent(threadId)
+    const { content: userContent, think } = this.buildUserContent(threadId)
     // Multimodal only when an image is present — keeps the plain-string payload for text-only turns
     const userMessage: string | ChatContentPart[] = imageUrl
       ? [{ type: 'text', text: userContent }, { type: 'image_url', image_url: { url: imageUrl } }]
@@ -34,8 +51,9 @@ export class ChatCompletionBackend {
       frequency_penalty: 2.0,
       // Ask thinking models to spend less on reasoning; some finetuned models ignore it
       ...(env.LLM_REASONING_EFFORT ? { reasoning_effort: env.LLM_REASONING_EFFORT } : {}),
-      // LLM_THINKING=off: verified switch — disable thinking entirely (no reasoning_content)
-      ...(env.LLM_THINKING === 'off' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      // LLM_THINKING=off: verified switch — disable thinking entirely (no reasoning_content);
+      // a current message starting with "think" re-enables it for that one message
+      ...(env.LLM_THINKING === 'off' && !think ? { chat_template_kwargs: { enable_thinking: false } } : {}),
     }
 
     const response = await fetch(env.LLM_ENDPOINT + '/v1/chat/completions', {
@@ -62,7 +80,8 @@ export class ChatCompletionBackend {
     if (typeof content !== 'string') {
       return '' // treat as empty → caller retries
     }
-    return content.trim()
+    // The finetune sometimes repeats the "Chucha:" speaker label — strip it before returning
+    return stripChuchaPrefix(content)
   }
 
   private buildSystemMessage (): string {
@@ -72,14 +91,17 @@ export class ChatCompletionBackend {
     return `${chat}${memory ? `\n${memory}` : ''}${CHUCHA_CONSTRAINTS}`
   }
 
-  private buildUserContent (threadId?: string): string {
-    let shortTerm = ''
+  private buildUserContent (threadId?: string): { content: string, think: boolean } {
+    let turns: string[] = []
     if (threadId) {
-      const turns = conversationStore.getThread(threadId)
-      if (turns.length > 0) {
-        shortTerm = turns.map((t) => t.content).join('\n')
-      }
+      turns = conversationStore.getThread(threadId).map((t) => t.content)
     }
-    return `${shortTerm}\nChucha:`
+    // "think" prefix on the current (last) turn enables thinking for this one request only;
+    // stripped from the payload — the stored turn itself is left untouched
+    const think = turns.length > 0 && isThinkMessage(turns[turns.length - 1])
+    if (think) {
+      turns = [...turns.slice(0, -1), stripThinkPrefix(turns[turns.length - 1])]
+    }
+    return { content: `${turns.join('\n')}\nChucha:`, think }
   }
 }

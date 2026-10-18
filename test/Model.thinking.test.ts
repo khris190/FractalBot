@@ -17,6 +17,20 @@ process.env.LLM_THINKING = 'OFF' // env is normalized to lowercase
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
+db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
+  \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  \`threadId\` text NOT NULL,
+  \`messageId\` text,
+  \`role\` text NOT NULL,
+  \`content\` text NOT NULL,
+  \`upvotes\` integer NOT NULL DEFAULT 0,
+  \`downvotes\` integer NOT NULL DEFAULT 0,
+  \`promoted\` integer NOT NULL DEFAULT 0,
+  \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
+); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
+
 // Mock DailyRoll before anything loads getLogger — keeps the process from hanging.
 const dailyRollPath = require.resolve('../src/utils/logger/pino-daily-roll')
 require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loaded: true, exports: () => ({ write: () => {}, flush: () => {}, end: () => {} }) } as any
@@ -31,6 +45,14 @@ let responder: () => any = () => ({ choices: [{ message: { content: 'preload' } 
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
+
+function reset () {
+  captured = []
+  responder = () => ({ choices: [{ message: { content: 'preload' } }] })
+  conversationStore.clearAll()
+}
 
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
@@ -58,5 +80,23 @@ test('enable_thinking=false is present on every request, including the construct
   await model.chatWithChucha()
   for (const req of captured) {
     assert.deepEqual(req.body.chat_template_kwargs, { enable_thinking: false }, `request ${req.url} missing the thinking-off switch`)
+  }
+})
+
+test('LLM_THINKING=off: a "think"-prefixed message re-enables thinking for that one message', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'think: why is the sky blue')
+  const model = await makeModel()
+
+  responder = () => ({ choices: [{ message: { content: 'blue' } }] })
+  await model.chatWithChucha('th1')
+
+  const req = captured[captured.length - 1]
+  assert.equal(req.body.chat_template_kwargs, undefined, 'per-message override drops the thinking-off switch')
+  assert.ok(req.body.messages[1].content.includes('why is the sky blue'), 'prefix stripped, clean question kept')
+  assert.ok(!req.body.messages[1].content.includes('think'))
+  // earlier requests (preload) still carry the off switch
+  for (const r of captured.slice(0, -1)) {
+    assert.deepEqual(r.body.chat_template_kwargs, { enable_thinking: false })
   }
 })
