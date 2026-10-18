@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 // Prevent .env from being loaded in this process so defaults are deterministic.
 process.env.DOTENV_CONFIG_PATH = '/nonexistent/.env'
 
-const KEYS = ['TOKEN', 'CLIENT_ID', 'GUILD_ID', 'DATA_PATH', 'LOG_PATH', 'DB_FILE', 'SIMILARITY_ENDPOINT', 'SIMILARITY_THRESHOLD', 'SIMILARITY_TRESHOLD', 'LLM_ENDPOINT', 'LLM_DATA_PATH', 'LLM_MODE', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LLM_TIMEOUT_MS'] as const
+const KEYS = ['TOKEN', 'CLIENT_ID', 'GUILD_ID', 'DATA_PATH', 'LOG_PATH', 'DB_FILE', 'SIMILARITY_ENDPOINT', 'SIMILARITY_THRESHOLD', 'SIMILARITY_TRESHOLD', 'LLM_ENDPOINT', 'LLM_DATA_PATH', 'LLM_MODE', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LLM_THINKING', 'LLM_TIMEOUT_MS'] as const
 
 function loadEnv (overrides: Record<string, string> = {}) {
   delete require.cache[require.resolve('../src/utils/env')]
@@ -39,6 +39,13 @@ test('LLM_MODE is lowercased; LLM_MODEL has a default', () => {
 test('LLM_REASONING_EFFORT is lowercased', () => {
   const env = loadEnv({ LLM_REASONING_EFFORT: 'Minimal' })
   assert.equal(env.LLM_REASONING_EFFORT, 'minimal')
+})
+
+test('LLM_THINKING defaults to "on" and is lowercased', () => {
+  const env = loadEnv()
+  assert.equal(env.LLM_THINKING, 'on')
+  const off = loadEnv({ LLM_THINKING: 'OFF' })
+  assert.equal(off.LLM_THINKING, 'off')
 })
 
 test('misspelled SIMILARITY_TRESHOLD is accepted as fallback', () => {

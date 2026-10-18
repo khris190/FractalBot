@@ -19,6 +19,8 @@ const LLM_MODEL = process.env.LLM_MODEL ?? 'local-model'
 // Optional: reasoning budget for thinking models (OpenAI field `reasoning_effort`: minimal|low|medium|high).
 // Unset = field omitted, so servers that don't know it never see it.
 const LLM_REASONING_EFFORT = process.env.LLM_REASONING_EFFORT?.toLowerCase()
+// 'on' (default) = current behavior; 'off' → chat backend sends chat_template_kwargs.enable_thinking=false (verified switch)
+const LLM_THINKING = (process.env.LLM_THINKING ?? 'on').toLowerCase()
 // Abort a hung LLM request; without it one stuck call stalls the entire single-flight queue
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 60_000)
 // Old misspelled name kept as fallback for existing .env files
@@ -40,5 +42,6 @@ export default {
   LLM_MODE,
   LLM_MODEL,
   LLM_REASONING_EFFORT,
+  LLM_THINKING,
   LLM_TIMEOUT_MS,
 }
