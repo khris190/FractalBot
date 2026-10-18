@@ -30,8 +30,13 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 
-// Stub fetch before module load: the handler's real Model fires a preload call on construction
-;(globalThis as any).fetch = async () => new Response(JSON.stringify({ content: '' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+// Stub fetch before module load: the handler's real Model fires a preload call on construction.
+// imageFetchBody (set per test) lets image-attachment fetches return a real buffer.
+let imageFetchBody: Buffer | null = null
+;(globalThis as any).fetch = async (url: string) => {
+  if (imageFetchBody) return new Response(new Uint8Array(imageFetchBody))
+  return new Response(JSON.stringify({ content: '' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
 
 // Mock DailyRoll BEFORE anything loads getLogger — the handler's module-load loggers would
 // otherwise open real SonicBoom file streams that keep the test process alive.
@@ -57,19 +62,25 @@ require.cache[require.resolve('../src/utils/ReplyHelper')] = {
 } as any
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const LLMPingResponseHandler = (require('../src/responses/LLMPingResponseHandler') as typeof import('../src/responses/LLMPingResponseHandler')).default
+const handlerModule = require('../src/responses/LLMPingResponseHandler') as typeof import('../src/responses/LLMPingResponseHandler')
+const LLMPingResponseHandler = handlerModule.default
+const { MAX_IMAGE_SIZE } = handlerModule
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { settings } = require('../src/settings')
 
 let chatCalls: string[] = []
-;(LLMPingResponseHandler as any).model = {
+let chatImages: Array<string | undefined> = []
+// Fresh stub per reset — earlier tests may swap in rejecting/custom stubs
+const defaultModelStub = () => ({
   busy: false,
-  chatWithChucha: (threadId?: string) => { chatCalls.push(threadId ?? ''); return Promise.resolve('mock reply') },
-}
+  chatWithChucha: (threadId?: string, imageUrl?: string) => { chatCalls.push(threadId ?? ''); chatImages.push(imageUrl); return Promise.resolve('mock reply') },
+})
+;(LLMPingResponseHandler as any).model = defaultModelStub()
 
 interface FakeMsg {
   id: string; author: { id: string, displayName: string }; content: string; cleanContent: string
   mentions: { users: any[] }; reference?: { messageId: string } | null
+  attachments?: any
   channel: any; reply: (payload: any) => Promise<{ id: string, react?: (e: string) => Promise<void> }>
 }
 
@@ -98,7 +109,10 @@ function setupChain (ids: string[], authorId: string) {
 
 function reset () {
   chatCalls = []
+  chatImages = []
+  imageFetchBody = null
   replied.length = 0
+  ;(LLMPingResponseHandler as any).model = defaultModelStub()
   ;(LLMPingResponseHandler as any).model.busy = false
   conversationStore.clearAll()
   for (const k of Object.keys(parents)) delete parents[k]
@@ -180,6 +194,40 @@ test('LLM errors produce the fallback error reply', async () => {
   assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
   const last = replied[replied.length - 1]
   assert.ok(last.content!.includes('idiot of a creator'))
+})
+
+test('image attachment is fetched, marked [image] in the turn, and passed as a data URL', async () => {
+  reset()
+  // minimal Collection stand-in (first + some, like discord.js Collection)
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
+  imageFetchBody = png
+  const msg = makeMessage({ id: 'g1', authorId: settings.ADMINS[0], content: '<@100> what is this', mentionChucha: true })
+  msg.attachments = fakeAttachments([{ contentType: 'image/png', size: png.length, url: 'https://cdn.example/img.png' }])
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  const turn = conversationStore.getThread('g1').find(t => t.role === 'user')
+  assert.ok(turn, 'user turn stored')
+  assert.ok(turn.content.endsWith('[image]'), 'user turn marked with [image]')
+  assert.equal(chatImages[0], `data:image/png;base64,${png.toString('base64')}`)
+})
+
+test('non-image and oversized attachments are not sent (marker only for real images)', async () => {
+  reset()
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+  const mk = (id: string, att: any) => {
+    const msg = makeMessage({ id, authorId: settings.ADMINS[0], content: '<@100> hi', mentionChucha: true })
+    msg.attachments = fakeAttachments([att])
+    return msg as any
+  }
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(mk('h0', { contentType: 'application/pdf', size: 10 })), true)
+  assert.equal(await LLMPingResponseHandler.handleMessage(mk('h1', { contentType: 'image/png', size: MAX_IMAGE_SIZE + 1 })), true)
+
+  assert.deepEqual(chatImages, [undefined, undefined], 'no data URL sent for either')
+  assert.ok(!conversationStore.getThread('h0')[0].content.includes('[image]'), 'pdf gets no marker')
+  assert.ok(conversationStore.getThread('h1')[0].content.includes('[image]'), 'oversized image still gets the marker')
 })
 
 test('Chucha replies are seeded with 👍 and 👎 reactions', async () => {

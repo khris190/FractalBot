@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import env from '../env'
 import conversationStore from '../db/conversationStore'
 import { loadMemory, PROMPT_FILE, CHUCHA_CONSTRAINTS } from './prompt'
-import { ChatCompletionRequest } from './types'
+import { ChatCompletionRequest, ChatContentPart } from './types'
 
 /** OpenAI /v1/chat/completions (system + user messages) */
 export class ChatCompletionBackend {
@@ -11,16 +11,21 @@ export class ChatCompletionBackend {
     maxTokens: number,
     temperature: number,
     stop: string[],
-    threadId?: string
+    threadId?: string,
+    imageUrl?: string
   ): Promise<string> {
     const systemMessage = this.buildSystemMessage()
     const userContent = this.buildUserContent(threadId)
+    // Multimodal only when an image is present — keeps the plain-string payload for text-only turns
+    const userMessage: string | ChatContentPart[] = imageUrl
+      ? [{ type: 'text', text: userContent }, { type: 'image_url', image_url: { url: imageUrl } }]
+      : userContent
 
     const payload: ChatCompletionRequest = {
       model: env.LLM_MODEL,
       messages: [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: userContent },
+        { role: 'user', content: userMessage },
       ],
       max_tokens: maxTokens,
       temperature,
@@ -29,6 +34,8 @@ export class ChatCompletionBackend {
       frequency_penalty: 2.0,
       // Ask thinking models to spend less on reasoning; some finetuned models ignore it
       ...(env.LLM_REASONING_EFFORT ? { reasoning_effort: env.LLM_REASONING_EFFORT } : {}),
+      // LLM_THINKING=off: verified switch — disable thinking entirely (no reasoning_content)
+      ...(env.LLM_THINKING === 'off' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
     }
 
     const response = await fetch(env.LLM_ENDPOINT + '/v1/chat/completions', {

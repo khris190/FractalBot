@@ -14,7 +14,9 @@ export class TextCompletionBackend {
     n_predict: number,
     temperature: number,
     stop: string[],
-    _threadId?: string
+    _threadId?: string,
+    // Text endpoints can't do vision — image is ignored here (handled upstream)
+    _imageUrl?: string
   ): Promise<string> {
     const url = env.LLM_ENDPOINT + (this.openai ? '/v1/completions' : '/completion')
 

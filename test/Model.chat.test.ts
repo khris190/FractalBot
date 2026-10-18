@@ -84,6 +84,7 @@ test('chat mode posts to /v1/chat/completions', async () => {
   assert.equal(req.body.messages[0].role, 'system')
   assert.equal(req.body.messages[1].role, 'user')
   assert.equal(req.body.reasoning_effort, undefined, 'reasoning_effort omitted when LLM_REASONING_EFFORT unset')
+  assert.equal(req.body.chat_template_kwargs, undefined, 'chat_template_kwargs omitted when LLM_THINKING defaults to on')
   // 500: headroom for reasoning models to still emit an answer (100 caused empty-content cascades)
   assert.equal(req.body.max_tokens, 500)
   assert.equal(req.body.temperature, 1.0)
@@ -128,6 +129,32 @@ test('chat mode: conversation turns appear in the user message', async () => {
   assert.ok(req.body.messages[1].content.includes('Alice: hello chucha'))
   assert.ok(req.body.messages[1].content.includes('Chucha: hello alice'))
   assert.ok(req.body.messages[1].content.trimEnd().endsWith('Chucha:'), 'user message ends with "Chucha:"')
+})
+
+test('chat mode: image is sent as image_url part alongside the text', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'Alice: look at this [image]')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'a cat' } }] })
+  await model.chatWithChucha('th1', 'data:image/png;base64,AAA=')
+
+  const content = captured[captured.length - 1].body.messages[1].content
+  assert.ok(Array.isArray(content), 'user content is a part array when an image is attached')
+  assert.equal(content[0].type, 'text')
+  assert.ok(content[0].text.includes('Alice: look at this [image]'))
+  assert.deepEqual(content[1], { type: 'image_url', image_url: { url: 'data:image/png;base64,AAA=' } })
+})
+
+test('chat mode: without an image the user content stays a plain string', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'Alice: hi')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'hi' } }] })
+  await model.chatWithChucha('th1')
+
+  assert.equal(typeof captured[captured.length - 1].body.messages[1].content, 'string')
 })
 
 test('chat mode: response parsing extracts message.content', async () => {

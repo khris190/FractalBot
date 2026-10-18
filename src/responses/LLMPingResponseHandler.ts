@@ -6,6 +6,9 @@ import Model from '../utils/AI/Model'
 import conversationStore from '../utils/db/conversationStore'
 import { settings } from '../settings'
 
+// Max size of an image attachment forwarded to the LLM (8 MB)
+export const MAX_IMAGE_SIZE = 8 * 1024 * 1024
+
 class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
@@ -48,10 +51,32 @@ class LLMPingResponseHandler extends BaseResponseHandler {
     for (let i = chain.length - 1; i >= 0; i--) {
       const msg = chain[i]
       const role = msg.author.id === Client.client.user?.id ? 'assistant' : 'user'
-      conversationStore.addTurn(threadId, msg.id, role, repl(msg))
+      // Image data is never stored — only a marker so the model knows an image was in that turn
+      const hasImage = msg.attachments?.some((a) => a.contentType?.startsWith('image/'))
+      conversationStore.addTurn(threadId, msg.id, role, repl(msg) + (hasImage ? ' [image]' : ''))
     }
 
     return threadId
+  }
+
+  // Pick the single image attachment (image content-type, ≤ 8MB) and fetch it as a base64
+  // data URL for the chat backend. Non-images, oversized files and download failures all
+  // degrade to no-image (logged) — they must never block the reply.
+  async extractImageDataUrl (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<string | undefined> {
+    const image = message.attachments?.first()
+    if (!image) return undefined
+    if (!image.contentType?.startsWith('image/') || image.size > MAX_IMAGE_SIZE) {
+      return undefined
+    }
+    try {
+      const res = await fetch(image.url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const buf = Buffer.from(await res.arrayBuffer())
+      return `data:${image.contentType};base64,${buf.toString('base64')}`
+    } catch (e) {
+      this.logger.warn('failed to fetch image attachment, replying without it', e as Error)
+      return undefined
+    }
   }
 
   async _handle (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<boolean> {
@@ -67,7 +92,8 @@ class LLMPingResponseHandler extends BaseResponseHandler {
           message.channel.sendTyping()
           try {
             const threadId = await this.prepareThread(message)
-            const reply = await this.model.chatWithChucha(threadId)
+            const imageUrl = await this.extractImageDataUrl(message)
+            const reply = await this.model.chatWithChucha(threadId, imageUrl)
 
             // Send and store Chucha's response with its real Discord messageId so future
             // reference-walks dedupe it (no duplicate turns, no lost context)

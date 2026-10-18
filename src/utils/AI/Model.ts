@@ -22,7 +22,8 @@ interface LLMBackend {
     n_predict: number,
     temperature: number,
     stop: string[],
-    threadId?: string
+    threadId?: string,
+    imageUrl?: string
   ): Promise<string>
 }
 
@@ -69,7 +70,8 @@ export default class Model {
     n_predict = 100,
     temperature = 1.0,
     extraStop: string[] = ['\n'],
-    threadId?: string
+    threadId?: string,
+    imageUrl?: string
   ): Promise<string> {
     this.busy = true
     try {
@@ -83,7 +85,8 @@ export default class Model {
             n_predict,
             temperature,
             stop,
-            threadId
+            threadId,
+            imageUrl
           )
         } catch (e) {
           // Transient failures (server down, HTTP error, non-JSON, timeout) are retried like empties
@@ -109,13 +112,15 @@ export default class Model {
 
   // Generate Chucha's reply for a conversation thread. Caller must have stored the
   // current user turn in the DB first; the last stored turn is what we respond to.
-  async chatWithChucha (threadId?: string): Promise<string> {
+  // imageUrl (optional): base64 data URL of the current message's image attachment —
+  // sent as an image_url part by the chat backend; ignored by the text backend.
+  async chatWithChucha (threadId?: string, imageUrl?: string): Promise<string> {
     return await this.enqueue(async () => {
       const turns = threadId ? conversationStore.getThread(threadId) : []
       const userInput = turns.length > 0 ? turns[turns.length - 1].content : ''
 
       // 500: budget leaves headroom for reasoning models to spend tokens thinking and still emit an answer
-      const res = await this.complete(buildPrompt(threadId), 500, 1.0, ['\n'], threadId)
+      const res = await this.complete(buildPrompt(threadId), 500, 1.0, ['\n'], threadId, imageUrl)
 
       // Audit log only — raw input/output pair, never read back by the model
       writeFileSync(HISTORY_FILE, `${userInput}\nChucha:${res}\n\n`, {
