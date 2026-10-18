@@ -4,6 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "test": "node -r ts-node/register --test 'test/*.test.ts'",
+    "test:system1": "ts-node System1/main.ts",
     "start": "ts-node index.ts"
   },
   "author": "",
