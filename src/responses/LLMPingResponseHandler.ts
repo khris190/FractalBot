@@ -13,7 +13,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
   #settings = {
-    cooldownMs: 1000 * 60,
+    cooldownMs: 1000 * 10,
     cooldownMessage: 'Can you pipe down and give me a minute? Like, literally?',
   }
 
