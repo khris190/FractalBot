@@ -1,4 +1,5 @@
 import env from '../env'
+import getLogger from '../logger/getLogger'
 import { TextCompletionBackend } from './TextCompletionBackend'
 import { ChatCompletionBackend } from './ChatCompletionBackend'
 
@@ -9,7 +10,11 @@ export function createBackend () {
       return new ChatCompletionBackend()
     case 'openai':
     case 'llama':
+      return new TextCompletionBackend()
     default:
+      getLogger('ai-factory').warn(
+        `unknown LLM_MODE '${env.LLM_MODE}', falling back to text completion backend`
+      )
       return new TextCompletionBackend()
   }
 }

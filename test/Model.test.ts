@@ -43,10 +43,15 @@ type Responder = () => string | Promise<string>
 let responder: Responder = () => 'preload'
 // raw bodies served one-per-fetch (to simulate malformed/empty responses); falls back to {content: responder()}
 let rawBodies: unknown[] = []
+// Error-path overrides: per-fetch status queue + sticky status / raw body
+let statuses: number[] = []
+let forcedStatus: number | null = null
+let forcedRawText: string | null = null
 ;(globalThis as any).fetch = async (url: string, init: any) => {
   captured.push({ url, body: JSON.parse(init.body) })
-  const body = rawBodies.length > 0 ? rawBodies.shift()! : { content: await responder() }
-  return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  const status = forcedStatus ?? (statuses.length > 0 ? statuses.shift()! : 200)
+  const raw = forcedRawText ?? JSON.stringify(rawBodies.length > 0 ? rawBodies.shift()! : { content: await responder() })
+  return new Response(raw, { status, headers: { 'Content-Type': 'application/json' } })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -56,6 +61,9 @@ function reset () {
   captured = []
   responder = () => 'preload'
   rawBodies = []
+  statuses = []
+  forcedStatus = null
+  forcedRawText = null
   conversationStore.clearAll()
   for (const f of ['memory.txt', 'memoryTMP.txt', 'history.txt']) {
     try { rmSync(join(process.env.LLM_DATA_PATH!, f)) } catch {}
@@ -259,6 +267,42 @@ test('response without content field is retried then throws', async () => {
   await assert.rejects(model.chatWithChucha(), /empty response after 5 attempts/)
 })
 
+test('HTTP errors are retried and recover once the server responds', async () => {
+  reset()
+  const model = await makeModel()
+
+  statuses = [500, 500]
+  responder = () => 'recovered'
+  assert.equal(await model.chatWithChucha(), 'recovered')
+  // preload + 2 failed attempts + success
+  assert.equal(captured.length, 4)
+})
+
+test('persistent HTTP errors reject after 5 attempts and the queue stays usable', async () => {
+  reset()
+  const model = await makeModel()
+
+  forcedStatus = 500
+  responder = () => 'unreachable'
+  await assert.rejects(model.chatWithChucha(), /request failed after 5 attempts/)
+
+  forcedStatus = null
+  responder = () => 'back online'
+  assert.equal(await model.chatWithChucha(), 'back online')
+})
+
+test('non-JSON response body is retried then throws, queue stays usable', async () => {
+  reset()
+  const model = await makeModel()
+
+  forcedRawText = '<html>gateway error</html>'
+  await assert.rejects(model.chatWithChucha(), /request failed after 5 attempts/)
+
+  forcedRawText = null
+  responder = () => 'json again'
+  assert.equal(await model.chatWithChucha(), 'json again')
+})
+
 test('llama mode (default) posts to /completion with llama.cpp payload shape', async () => {
   reset()
   rawBodies = [{ content: 'from llama.cpp' }]
@@ -270,7 +314,7 @@ test('llama mode (default) posts to /completion with llama.cpp payload shape', a
   assert.ok(req.url.endsWith('/completion'), `expected /completion, got ${req.url}`)
   assert.ok('n_predict' in req.body, 'llama.cpp field present')
   assert.ok(!('max_tokens' in req.body), 'openai field must not leak into llama payload')
-  assert.equal(req.body.repeat_penalty, 10.0)
+  assert.equal(req.body.repeat_penalty, 2.0)
 })
 
 test('backend factory: llama mode selects TextCompletionBackend', async () => {

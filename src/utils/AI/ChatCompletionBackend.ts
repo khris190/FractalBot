@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import env from '../env'
 import conversationStore from '../db/conversationStore'
-import { loadMemory, PROMPT_FILE } from './prompt'
+import { loadMemory, PROMPT_FILE, CHUCHA_CONSTRAINTS } from './prompt'
 import { ChatCompletionRequest } from './types'
 
 /** OpenAI /v1/chat/completions (system + user messages) */
@@ -25,7 +25,8 @@ export class ChatCompletionBackend {
       max_tokens: maxTokens,
       temperature,
       stop,
-      frequency_penalty: 10.0,
+      // spec max (OpenAI range [-2, 2]) — keeps strong repetition suppression without 400-ing on strict servers
+      frequency_penalty: 2.0,
       // Ask thinking models to spend less on reasoning; some finetuned models ignore it
       ...(env.LLM_REASONING_EFFORT ? { reasoning_effort: env.LLM_REASONING_EFFORT } : {}),
     }
@@ -34,6 +35,7 @@ export class ChatCompletionBackend {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(env.LLM_TIMEOUT_MS),
     })
 
     if (!response.ok) {
@@ -59,7 +61,8 @@ export class ChatCompletionBackend {
   private buildSystemMessage (): string {
     const memory = loadMemory()
     const chat = readFileSync(PROMPT_FILE, 'utf8')
-    return `${chat}${memory ? `\n${memory}` : ''}`
+    // Same constraint block the text path concatenates into its prompt (micro-turn format etc.)
+    return `${chat}${memory ? `\n${memory}` : ''}${CHUCHA_CONSTRAINTS}`
   }
 
   private buildUserContent (threadId?: string): string {

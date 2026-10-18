@@ -25,20 +25,23 @@ export class TextCompletionBackend {
           max_tokens: n_predict,
           temperature,
           stop,
-          frequency_penalty: 10.0,
+          // spec max (OpenAI range [-2, 2]) — keeps strong repetition suppression without 400-ing on strict servers
+          frequency_penalty: 2.0,
         } as OpenAICompletionRequest)
       : ({
           prompt,
           n_predict,
           temperature,
           stop,
-          repeat_penalty: 10.0,
+          // strong but sane (llama.cpp default is 1.1); 10.0 risked degraded generation
+          repeat_penalty: 2.0,
         } as LlamaCompletionRequest)
 
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(env.LLM_TIMEOUT_MS),
     })
 
     if (!response.ok) {

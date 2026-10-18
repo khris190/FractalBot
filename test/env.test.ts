@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 // Prevent .env from being loaded in this process so defaults are deterministic.
 process.env.DOTENV_CONFIG_PATH = '/nonexistent/.env'
 
-const KEYS = ['TOKEN', 'CLIENT_ID', 'GUILD_ID', 'DATA_PATH', 'LOG_PATH', 'DB_FILE', 'SIMILARITY_ENDPOINT', 'SIMILARITY_THRESHOLD', 'SIMILARITY_TRESHOLD', 'LLM_ENDPOINT', 'LLM_DATA_PATH'] as const
+const KEYS = ['TOKEN', 'CLIENT_ID', 'GUILD_ID', 'DATA_PATH', 'LOG_PATH', 'DB_FILE', 'SIMILARITY_ENDPOINT', 'SIMILARITY_THRESHOLD', 'SIMILARITY_TRESHOLD', 'LLM_ENDPOINT', 'LLM_DATA_PATH', 'LLM_MODE', 'LLM_MODEL', 'LLM_REASONING_EFFORT', 'LLM_TIMEOUT_MS'] as const
 
 function loadEnv (overrides: Record<string, string> = {}) {
   delete require.cache[require.resolve('../src/utils/env')]
@@ -22,6 +22,23 @@ test('defaults when nothing is set', () => {
   assert.equal(env.LLM_ENDPOINT, 'http://localhost:8080') // bare host:port is normalized to http://
   assert.equal(env.SIMILARITY_THRESHOLD, 0.9)
   assert.equal(env.LLM_DATA_PATH, '/app/data/LLM')
+  assert.equal(env.LLM_TIMEOUT_MS, 60_000)
+})
+
+test('https LLM_ENDPOINT passes through untouched', () => {
+  const env = loadEnv({ LLM_ENDPOINT: 'https://api.openai.com' })
+  assert.equal(env.LLM_ENDPOINT, 'https://api.openai.com')
+})
+
+test('LLM_MODE is lowercased; LLM_MODEL has a default', () => {
+  const env = loadEnv({ LLM_MODE: 'Chat' })
+  assert.equal(env.LLM_MODE, 'chat')
+  assert.equal(env.LLM_MODEL, 'local-model')
+})
+
+test('LLM_REASONING_EFFORT is lowercased', () => {
+  const env = loadEnv({ LLM_REASONING_EFFORT: 'Minimal' })
+  assert.equal(env.LLM_REASONING_EFFORT, 'minimal')
 })
 
 test('misspelled SIMILARITY_TRESHOLD is accepted as fallback', () => {

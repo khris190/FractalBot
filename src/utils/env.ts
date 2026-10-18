@@ -19,6 +19,8 @@ const LLM_MODEL = process.env.LLM_MODEL ?? 'local-model'
 // Optional: reasoning budget for thinking models (OpenAI field `reasoning_effort`: minimal|low|medium|high).
 // Unset = field omitted, so servers that don't know it never see it.
 const LLM_REASONING_EFFORT = process.env.LLM_REASONING_EFFORT?.toLowerCase()
+// Abort a hung LLM request; without it one stuck call stalls the entire single-flight queue
+const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 60_000)
 // Old misspelled name kept as fallback for existing .env files
 const SIMILARITY_THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD ?? process.env.SIMILARITY_TRESHOLD) || 0.9
 // Overridable so tests can point at a temp dir; production uses the docker mount
@@ -38,4 +40,5 @@ export default {
   LLM_MODE,
   LLM_MODEL,
   LLM_REASONING_EFFORT,
+  LLM_TIMEOUT_MS,
 }

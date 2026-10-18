@@ -74,18 +74,32 @@ export default class Model {
     this.busy = true
     try {
       const stop = [...THINKING_STOP_STRINGS, ...extraStop]
+      let lastError: unknown
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        const content = await this.backend.request(
-          prompt,
-          n_predict,
-          temperature,
-          stop,
-          threadId
-        )
+        let content: string
+        try {
+          content = await this.backend.request(
+            prompt,
+            n_predict,
+            temperature,
+            stop,
+            threadId
+          )
+        } catch (e) {
+          // Transient failures (server down, HTTP error, non-JSON, timeout) are retried like empties
+          lastError = e
+          this.logger.warn(
+            `LLM request failed (attempt ${attempt}/${MAX_ATTEMPTS})`, e as Error
+          )
+          continue
+        }
         if (content !== '') return content
         this.logger.warn(
           `LLM returned an empty response (attempt ${attempt}/${MAX_ATTEMPTS})`
         )
+      }
+      if (lastError) {
+        throw new Error(`LLM request failed after ${MAX_ATTEMPTS} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
       }
       throw new Error(`LLM returned an empty response after ${MAX_ATTEMPTS} attempts`)
     } finally {
@@ -100,7 +114,8 @@ export default class Model {
       const turns = threadId ? conversationStore.getThread(threadId) : []
       const userInput = turns.length > 0 ? turns[turns.length - 1].content : ''
 
-      const res = await this.complete(buildPrompt(threadId), 100, 1.0, ['\n'], threadId)
+      // 500: budget leaves headroom for reasoning models to spend tokens thinking and still emit an answer
+      const res = await this.complete(buildPrompt(threadId), 500, 1.0, ['\n'], threadId)
 
       // Audit log only — raw input/output pair, never read back by the model
       writeFileSync(HISTORY_FILE, `${userInput}\nChucha:${res}\n\n`, {
