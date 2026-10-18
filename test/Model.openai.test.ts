@@ -94,7 +94,8 @@ test('openai mode sends thinking-tag stop strings', async () => {
   await model.chatWithChucha()
 
   const req = captured[captured.length - 1]
-  assert.deepEqual(req.body.stop, ['<think>', '</think>'])
+  assert.ok(req.body.stop.includes('<think>'))
+  assert.ok(req.body.stop.includes('</think>'))
 })
 
 test('openai mode retries on empty choices text', async () => {

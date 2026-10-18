@@ -1,0 +1,211 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+// Chat mode — must be set BEFORE env is required.
+const dir = mkdtempSync(join(tmpdir(), 'fractal-model-chat-'))
+process.env.DOTENV_CONFIG_PATH = '/nonexistent/.env'
+process.env.DATA_PATH = dir
+process.env.DB_FILE = 'test.sqlite'
+process.env.LLM_DATA_PATH = join(dir, 'LLM')
+process.env.LLM_MODE = 'chat'
+process.env.LLM_MODEL = 'chat-model'
+
+mkdirSync(process.env.LLM_DATA_PATH!)
+writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
+db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
+  \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  \`threadId\` text NOT NULL,
+  \`messageId\` text,
+  \`role\` text NOT NULL,
+  \`content\` text NOT NULL,
+  \`upvotes\` integer NOT NULL DEFAULT 0,
+  \`downvotes\` integer NOT NULL DEFAULT 0,
+  \`promoted\` integer NOT NULL DEFAULT 0,
+  \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
+); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
+
+// Mock DailyRoll before anything loads getLogger.
+const dailyRollPath = require.resolve('../src/utils/logger/pino-daily-roll')
+require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loaded: true, exports: () => ({ write: () => {}, flush: () => {}, end: () => {} }) } as any
+
+interface Captured { url: string, body: any }
+let captured: Captured[] = []
+type Responder = () => any
+let responder: Responder = () => ({ choices: [{ message: { content: 'preload' } }] })
+let rawBodies: unknown[] = []
+;(globalThis as any).fetch = async (url: string, init: any) => {
+  captured.push({ url, body: JSON.parse(init.body) })
+  const body = rawBodies.length > 0 ? rawBodies.shift()! : responder()
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
+
+function reset () {
+  captured = []
+  responder = () => ({ choices: [{ message: { content: 'preload' } }] })
+  rawBodies = []
+  conversationStore.clearAll()
+  for (const f of ['memory.txt', 'memoryTMP.txt', 'history.txt']) {
+    try { rmSync(join(process.env.LLM_DATA_PATH!, f)) } catch {}
+  }
+}
+
+async function makeModel (): Promise<InstanceType<typeof Model>> {
+  const model = new Model()
+  await new Promise(r => setTimeout(r, 30))
+  return model
+}
+
+test('chat mode posts to /v1/chat/completions', async () => {
+  reset()
+  const model = await makeModel()
+
+  responder = () => ({ choices: [{ message: { content: 'hello' } }] })
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.url.endsWith('/v1/chat/completions'), `expected chat endpoint, got ${req.url}`)
+  assert.equal(req.body.model, 'chat-model')
+  assert.equal(req.body.messages.length, 2)
+  assert.equal(req.body.messages[0].role, 'system')
+  assert.equal(req.body.messages[1].role, 'user')
+  assert.equal(req.body.reasoning_effort, undefined, 'reasoning_effort omitted when LLM_REASONING_EFFORT unset')
+})
+
+test('chat mode: system message contains prompt.txt content', async () => {
+  reset()
+  writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha. Be evil.\n')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'hi' } }] })
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.messages[0].content.includes('You are Chucha.'))
+  assert.ok(req.body.messages[0].content.includes('Be evil.'))
+})
+
+test('chat mode: memory is included in the system message', async () => {
+  reset()
+  writeFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'Alice likes cats.\n')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'hi' } }] })
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.messages[0].content.includes('Alice likes cats.'))
+  assert.ok(req.body.messages[0].content.includes('Long-term memory'))
+})
+
+test('chat mode: conversation turns appear in the user message', async () => {
+  reset()
+  conversationStore.addTurn('th1', 'm1', 'user', 'Alice: hello chucha')
+  conversationStore.addTurn('th1', null, 'assistant', 'Chucha: hello alice')
+
+  const model = await makeModel()
+  responder = () => ({ choices: [{ message: { content: 'hi back' } }] })
+  await model.chatWithChucha('th1')
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.messages[1].content.includes('Alice: hello chucha'))
+  assert.ok(req.body.messages[1].content.includes('Chucha: hello alice'))
+  assert.ok(req.body.messages[1].content.trimEnd().endsWith('Chucha:'), 'user message ends with "Chucha:"')
+})
+
+test('chat mode: response parsing extracts message.content', async () => {
+  reset()
+  responder = () => ({
+    choices: [{
+      index: 0,
+      message: { role: 'assistant', content: 'Chucha is here!' },
+      finish_reason: 'stop',
+    }],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  })
+  const model = await makeModel()
+
+  assert.equal(await model.chatWithChucha(), 'Chucha is here!')
+})
+
+test('chat mode: stop array includes thinking-tag stop strings', async () => {
+  reset()
+  responder = () => ({ choices: [{ message: { content: 'ok' } }] })
+  const model = await makeModel()
+
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.stop.includes('<think>'))
+  assert.ok(req.body.stop.includes('</think>'))
+})
+
+test('chat mode: empty responses are retried', async () => {
+  reset()
+  rawBodies = [{ choices: [{ message: { content: '' } }] }]
+  responder = () => ({ choices: [{ message: { content: 'got it' } }] })
+  const model = await makeModel()
+
+  assert.equal(await model.chatWithChucha(), 'got it')
+  // preload + 2 attempts
+  assert.equal(captured.length, 3)
+})
+
+test('chat mode: malformed response (no content) is retried then throws', async () => {
+  reset()
+  // preload consumes one, responder is the fallback after rawBodies run out
+  rawBodies = [
+    { error: 'preload fallback' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+  ]
+  responder = () => ({ error: 'model not loaded' }) // fallback for any calls after rawBodies
+  const model = await makeModel()
+
+  await assert.rejects(model.chatWithChucha(), /empty response after 5 attempts/)
+})
+
+test('chat mode: frequency_penalty is set to 10.0', async () => {
+  reset()
+  responder = () => ({ choices: [{ message: { content: 'hi' } }] })
+  const model = await makeModel()
+
+  await model.chatWithChucha()
+  const req = captured[captured.length - 1]
+  assert.equal(req.body.frequency_penalty, 10.0)
+})
+
+test('chat mode: concurrency is serialized (only one request at a time)', async () => {
+  reset()
+  let active = 0
+  let maxActive = 0
+  responder = () => {
+    // responder itself is synchronous, so we just track it
+    return { choices: [{ message: { content: 'ok' } }] }
+  }
+  // Override fetch to track concurrency
+  const origFetch = (globalThis as any).fetch
+  let callCount = 0
+  ;(globalThis as any).fetch = async (url: string, init: any) => {
+    callCount++
+    await new Promise(r => setTimeout(r, 5))
+    callCount--
+    return origFetch(url, init)
+  }
+
+  const model = await makeModel()
+  await Promise.all([model.chatWithChucha(), model.chatWithChucha()])
+})

@@ -19,7 +19,7 @@ test('defaults when nothing is set', () => {
   // DB_FILE is internal (not exported) — verify via the resolved DB_PATH
   assert.ok(env.DB_PATH.endsWith('db.sqlite'))
   assert.equal(env.SIMILARITY_ENDPOINT, 'localhost:5000')
-  assert.equal(env.LLM_ENDPOINT, 'localhost:8080')
+  assert.equal(env.LLM_ENDPOINT, 'http://localhost:8080') // bare host:port is normalized to http://
   assert.equal(env.SIMILARITY_THRESHOLD, 0.9)
   assert.equal(env.LLM_DATA_PATH, '/app/data/LLM')
 })

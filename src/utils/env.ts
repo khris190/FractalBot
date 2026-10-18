@@ -9,11 +9,16 @@ const LOG_PATH = process.env.LOG_PATH ?? './logs'
 const DB_FILE = process.env.DB_FILE ?? 'db.sqlite'
 // Port matches python/server.py (5000); docker-compose overrides this internally.
 const SIMILARITY_ENDPOINT = process.env.SIMILARITY_ENDPOINT ?? 'localhost:5000'
-const LLM_ENDPOINT = process.env.LLM_ENDPOINT ?? 'localhost:8080'
+// Local servers (llama.cpp/LM Studio) are plain HTTP; accept scheme-less host:port
+const RAW_LLM_ENDPOINT = process.env.LLM_ENDPOINT ?? 'localhost:8080'
+const LLM_ENDPOINT = /^https?:\/\//.test(RAW_LLM_ENDPOINT) ? RAW_LLM_ENDPOINT : `http://${RAW_LLM_ENDPOINT}`
 // 'llama' = llama.cpp /completion; 'openai' = OpenAI-compatible (LM Studio) /v1/completions
 const LLM_MODE = (process.env.LLM_MODE ?? 'llama').toLowerCase()
 // model identifier sent in openai mode (LM Studio ignores it, but the API requires a field)
 const LLM_MODEL = process.env.LLM_MODEL ?? 'local-model'
+// Optional: reasoning budget for thinking models (OpenAI field `reasoning_effort`: minimal|low|medium|high).
+// Unset = field omitted, so servers that don't know it never see it.
+const LLM_REASONING_EFFORT = process.env.LLM_REASONING_EFFORT?.toLowerCase()
 // Old misspelled name kept as fallback for existing .env files
 const SIMILARITY_THRESHOLD = Number(process.env.SIMILARITY_THRESHOLD ?? process.env.SIMILARITY_TRESHOLD) || 0.9
 // Overridable so tests can point at a temp dir; production uses the docker mount
@@ -32,4 +37,5 @@ export default {
   LLM_ENDPOINT,
   LLM_MODE,
   LLM_MODEL,
+  LLM_REASONING_EFFORT,
 }

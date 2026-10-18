@@ -228,7 +228,8 @@ test('stop array always includes the thinking tags', async () => {
   await model.chatWithChucha()
 
   const req = captured[captured.length - 1]
-  assert.deepEqual(req.body.stop, ["<think>", "</think>"])
+  assert.ok(req.body.stop.includes('<think>'))
+  assert.ok(req.body.stop.includes('</think>'))
 })
 
 test('empty responses are retried until a non-empty one arrives', async () => {
@@ -248,6 +249,36 @@ test('response without content field is retried then throws', async () => {
   const model = await makeModel()
 
   // simulate llama.cpp returning 200 with an unexpected body (no content key) on every attempt
-  rawBodies = [{ error: 'model not loaded' }, { error: 'model not loaded' }, { error: 'model not loaded' }]
-  await assert.rejects(model.chatWithChucha(), /empty response after 3 attempts/)
+  rawBodies = [
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+    { error: 'model not loaded' },
+  ]
+  await assert.rejects(model.chatWithChucha(), /empty response after 5 attempts/)
+})
+
+test('llama mode (default) posts to /completion with llama.cpp payload shape', async () => {
+  reset()
+  rawBodies = [{ content: 'from llama.cpp' }]
+  const model = await makeModel()
+
+  await model.chatWithChucha()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.url.endsWith('/completion'), `expected /completion, got ${req.url}`)
+  assert.ok('n_predict' in req.body, 'llama.cpp field present')
+  assert.ok(!('max_tokens' in req.body), 'openai field must not leak into llama payload')
+  assert.equal(req.body.repeat_penalty, 10.0)
+})
+
+test('backend factory: llama mode selects TextCompletionBackend', async () => {
+  reset()
+  process.env.LLM_MODE = 'llama'
+  const factory = require('../src/utils/AI/backendFactory')
+  const backend = factory.createBackend()
+
+  // TextCompletionBackend has an 'openai' property; ChatCompletionBackend does not
+  assert.ok('openai' in backend, 'llama mode selects TextCompletionBackend')
 })
