@@ -17,7 +17,6 @@ import getLogger from './utils/logger/getLogger'
 import RandomImageInterval from './intervals/RandomImage'
 // import MemoryConsolidationInterval from './intervals/MemoryConsolidation'
 import PingEveryoneResponseHandler from './responses/PingEveryoneResponseHandler'
-import PingQuestionResponseHandler from './responses/PingQuestionResponseHandler'
 import SpecyficResponseHandler from './responses/SpecyficResponseHandler'
 import RandomResponseHandler from './responses/RandomResponseHandler'
 import GrokResponseHandler from './responses/GrokResponseHandler'
@@ -77,7 +76,6 @@ export class Client {
         if (await GrokResponseHandler.handleMessage(message)) return
         if (await PingWishResponseHandler.handleMessage(message)) return
         if (await LLMPingResponseHandler.handleMessage(message)) return // TODO: give this a switch
-        if (await PingQuestionResponseHandler.handleMessage(message)) return
         SpecyficResponseHandler.handleMessage(message)
         RandomResponseHandler.handleMessage(message)
       } catch (e: any) {

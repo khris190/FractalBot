@@ -31,7 +31,6 @@ On every message, a chain of handlers runs in order; the first one that claims t
 | `GrokResponseHandler` | message starts with `@grok` | "Not what I'm called." |
 | `PingWishResponseHandler` | mentions bot + content starts with "i wish" | grants/denies the wish (4.8h cooldown per guild, stored in DB); uses the similarity service to reject repeated wishes ("Get more creative") |
 | `LLMPingResponseHandler` | mentions bot (non-question) | asks the local LLM persona for a reply; 1min cooldown, admins bypass |
-| `PingQuestionResponseHandler` | mentions bot + message contains "?" | random snarky answer from a weighted pool |
 | `SpecyficResponseHandler` | exact-match phrases (currently: "w") | canned response |
 | `RandomResponseHandler` | 0.1% chance on any message | random nonsense from a large weighted pool |
 
