@@ -72,6 +72,24 @@ async function makeModel (): Promise<InstanceType<typeof Model>> {
   return model
 }
 
+test('captionImage sends the image with the note-taker system and returns the caption', async () => {
+  reset()
+  const model = await makeModel()
+  const dataUrl = 'data:image/png;base64,abc123'
+  responder = () => ({ choices: [{ message: { content: 'a red car' } }] })
+
+  assert.equal(await model.captionImage(dataUrl), 'a red car')
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.url.endsWith('/v1/chat/completions'))
+  assert.equal(req.body.messages[0].content, 'You are writing long-term memory notes for a Discord bot. Be factual and concise.')
+  assert.ok(Array.isArray(req.body.messages[1].content), 'user message is multimodal')
+  assert.ok(req.body.messages[1].content[0].text.includes('Describe this image'))
+  assert.equal(req.body.messages[1].content[1].image_url.url, dataUrl)
+  assert.ok(req.body.max_tokens <= 40, 'small token budget')
+  assert.deepEqual(req.body.chat_template_kwargs, { enable_thinking: false }, 'captions skip reasoning — thinking would eat the small budget')
+})
+
 test('chat mode posts to /v1/chat/completions', async () => {
   reset()
   const model = await makeModel()

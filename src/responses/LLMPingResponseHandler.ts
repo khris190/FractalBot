@@ -119,6 +119,16 @@ class LLMPingResponseHandler extends BaseResponseHandler {
             } catch (e) {
               this.logger.error('failed to add rating reactions', e as Error)
             }
+            // Caption the image so future prompts remember what it showed (the image itself is
+            // never stored). A failure keeps the plain [image] marker — it must not undo the reply.
+            if (imageUrl) {
+              try {
+                const caption = await this.model.captionImage(imageUrl)
+                if (caption) conversationStore.setTurnImageCaption(message.id, caption)
+              } catch (e) {
+                this.logger.warn('image caption failed, keeping plain [image] marker', e as Error)
+              }
+            }
           } catch (error) {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'

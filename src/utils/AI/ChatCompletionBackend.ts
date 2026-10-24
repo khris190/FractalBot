@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import env from '../env'
 import conversationStore from '../db/conversationStore'
-import { loadMemory, PROMPT_FILE, CHUCHA_CONSTRAINTS } from './prompt'
+import { loadMemory, loadToday, PROMPT_FILE, CHUCHA_CONSTRAINTS } from './prompt'
 import { ChatCompletionRequest, ChatContentPart } from './types'
 
 // Word-boundary "think" at the start of a message (case-insensitive), optionally followed by ":" and/or whitespace
@@ -34,14 +34,17 @@ export class ChatCompletionBackend {
     stop: string[],
     threadId?: string,
     imageUrl?: string,
-    noteTaker = false
+    noteTaker = false,
+    noThink = false
   ): Promise<string> {
     // With a threadId the user message is rebuilt from the DB thread (source of truth) and the
     // Chucha persona system applies. Note-taker calls (consolidation/compression) send the
     // caller's raw prompt as the user message with a neutral system instead — the one-line/
     // profanity chat constraints would cramp the notes and bleed the persona into them.
     // Other no-thread calls (preload, unit tests) keep the original empty-thread content.
-    const systemMessage = noteTaker ? NOTE_TAKER_SYSTEM : this.buildSystemMessage()
+    // The system carries the unconsolidated day's raw log ("Today so far") minus the current
+    // thread, which is rebuilt into the user message below.
+    const systemMessage = noteTaker ? NOTE_TAKER_SYSTEM : this.buildSystemMessage(threadId)
     const { content: userContent, think } = threadId !== undefined
       ? this.buildUserContent(threadId)
       : noteTaker
@@ -68,8 +71,9 @@ export class ChatCompletionBackend {
       // Ask thinking models to spend less on reasoning; some finetuned models ignore it
       ...(env.LLM_REASONING_EFFORT ? { reasoning_effort: env.LLM_REASONING_EFFORT } : {}),
       // LLM_THINKING=off: verified switch — disable thinking entirely (no reasoning_content);
-      // a current message starting with "think" re-enables it for that one message
-      ...(env.LLM_THINKING === 'off' && !think ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+      // a current message starting with "think" re-enables it for that one message.
+      // noThink is a per-call override (image captions) — reasoning would eat the small budget
+      ...(noThink || (env.LLM_THINKING === 'off' && !think) ? { chat_template_kwargs: { enable_thinking: false } } : {}),
     }
 
     const response = await fetch(env.LLM_ENDPOINT + '/v1/chat/completions', {
@@ -100,11 +104,12 @@ export class ChatCompletionBackend {
     return stripChuchaPrefix(content)
   }
 
-  private buildSystemMessage (): string {
+  private buildSystemMessage (threadId?: string): string {
     const memory = loadMemory()
+    // The current thread is rebuilt into the user message — exclude it from the raw log.
+    const today = loadToday(threadId)
     const chat = readFileSync(PROMPT_FILE, 'utf8')
-    // Same constraint block the text path concatenates into its prompt (micro-turn format etc.)
-    return `${chat}${memory ? `\n${memory}` : ''}${CHUCHA_CONSTRAINTS}`
+    return `${chat}${memory ? `\n${memory}` : ''}${today}${CHUCHA_CONSTRAINTS}`
   }
 
   private buildUserContent (threadId?: string): { content: string, think: boolean } {

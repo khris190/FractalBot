@@ -16,7 +16,9 @@ export class TextCompletionBackend {
     stop: string[],
     _threadId?: string,
     // Text endpoints can't do vision — image is ignored here (handled upstream)
-    _imageUrl?: string
+    _imageUrl?: string,
+    // No thinking switch on /completion — ignored here
+    _noThink?: boolean
   ): Promise<string> {
     const url = env.LLM_ENDPOINT + (this.openai ? '/v1/completions' : '/completion')
 

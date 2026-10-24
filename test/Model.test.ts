@@ -79,6 +79,15 @@ async function makeModel (): Promise<InstanceType<typeof Model>> {
   return model
 }
 
+test('captionImage is a no-op in text mode (the backend cannot see images)', async () => {
+  reset()
+  const model = await makeModel()
+  const before = captured.length
+
+  assert.equal(await model.captionImage('data:image/png;base64,abc'), undefined)
+  assert.equal(captured.length, before, 'no LLM call made')
+})
+
 test('prompt assembly: persona + memory section + recent conversation, ends with Chucha:', async () => {
   reset()
   const model = await makeModel()

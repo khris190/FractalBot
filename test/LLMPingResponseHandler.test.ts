@@ -76,6 +76,7 @@ let chatImages: Array<string | undefined> = []
 const defaultModelStub = () => ({
   busy: false,
   chatWithChucha: (threadId?: string, imageUrl?: string) => { chatCalls.push(threadId ?? ''); chatImages.push(imageUrl); return Promise.resolve('mock reply') },
+  captionImage: () => Promise.resolve(undefined),
 })
 ;(LLMPingResponseHandler as any).model = defaultModelStub()
 
@@ -247,6 +248,57 @@ test('non-image and oversized attachments are not sent (marker only for real ima
   assert.deepEqual(chatImages, [undefined, undefined], 'no data URL sent for either')
   assert.ok(!conversationStore.getThread('h0')[0].content.includes('[image]'), 'pdf gets no marker')
   assert.ok(conversationStore.getThread('h1')[0].content.includes('[image]'), 'oversized image still gets the marker')
+})
+
+test('multiple image attachments yield one [image] marker; only the first is sent to the LLM', async () => {
+  reset()
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
+  imageFetchBody = png
+  const msg = makeMessage({ id: 'g3', authorId: settings.ADMINS[0], content: '<@100> look at both', mentionChucha: true })
+  msg.attachments = fakeAttachments([
+    { contentType: 'image/png', size: png.length, url: 'https://cdn.example/a.png' },
+    { contentType: 'image/jpeg', size: png.length, url: 'https://cdn.example/b.jpg' },
+  ])
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  const turn = conversationStore.getThread('g3').find(t => t.role === 'user')
+  assert.ok(turn, 'user turn stored')
+  assert.equal((turn.content.match(/\[image\]/g) ?? []).length, 1, 'one marker for two images')
+  assert.equal(chatImages[0], `data:image/png;base64,${png.toString('base64')}`, 'only the first attachment is sent')
+})
+
+test('image caption is stored with the turn as [image: caption]', async () => {
+  reset()
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
+  imageFetchBody = png
+  const msg = makeMessage({ id: 'g4', authorId: settings.ADMINS[0], content: '<@100> what is this', mentionChucha: true })
+  msg.attachments = fakeAttachments([{ contentType: 'image/png', size: png.length, url: 'https://cdn.example/img.png' }])
+  ;(LLMPingResponseHandler as any).model.captionImage = () => Promise.resolve('a red car')
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  const turn = conversationStore.getThread('g4').find(t => t.role === 'user')
+  assert.ok(turn, 'user turn stored')
+  assert.ok(turn.content.endsWith('[image: a red car]'), 'caption replaces the plain marker')
+})
+
+test('caption failure keeps the plain [image] marker and the reply still goes out', async () => {
+  reset()
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
+  imageFetchBody = png
+  const msg = makeMessage({ id: 'g5', authorId: settings.ADMINS[0], content: '<@100> what is this', mentionChucha: true })
+  msg.attachments = fakeAttachments([{ contentType: 'image/png', size: png.length, url: 'https://cdn.example/img.png' }])
+  ;(LLMPingResponseHandler as any).model.captionImage = () => Promise.reject(new Error('caption down'))
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  const turns = conversationStore.getThread('g5')
+  const turn = turns.find(t => t.role === 'user')
+  assert.ok(turn, 'user turn stored')
+  assert.ok(turn.content.endsWith('[image]'), 'plain marker kept')
+  assert.ok(turns.some(t => t.role === 'assistant'), 'reply stored despite caption failure')
 })
 
 test('reports answering activity while the LLM runs, idle after', async () => {

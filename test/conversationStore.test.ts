@@ -59,6 +59,16 @@ test('getThread returns empty for unknown threads', () => {
   assert.deepEqual(conversationStore.getThread('nonexistent-thread'), [])
 })
 
+test('setTurnImageCaption replaces the trailing [image] marker exactly once', () => {
+  conversationStore.addTurn('t5', 'm5', 'user', 'Alice: look [image]')
+
+  assert.equal(conversationStore.setTurnImageCaption('m5', 'a cat'), true)
+  assert.equal(conversationStore.getThread('t5')[0].content, 'Alice: look [image: a cat]')
+  assert.equal(conversationStore.setTurnImageCaption('m5', 'another cat'), false, 'already captioned — no-op')
+  assert.equal(conversationStore.getThread('t5')[0].content, 'Alice: look [image: a cat]')
+  assert.equal(conversationStore.setTurnImageCaption('missing', 'x'), false, 'unknown row — no-op')
+})
+
 test('getAllThreads groups turns per thread', () => {
   const all = conversationStore.getAllThreads()
   assert.ok(all.has('t1'))

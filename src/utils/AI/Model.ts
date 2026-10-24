@@ -23,7 +23,9 @@ interface LLMBackend {
     threadId?: string,
     imageUrl?: string,
     // Consolidation/compression calls: neutral note-taker system + raw prompt as user message
-    noteTaker?: boolean
+    noteTaker?: boolean,
+    // Short utility calls (image captions): skip reasoning entirely so small token budgets hold
+    noThink?: boolean
   ): Promise<string>
 }
 
@@ -72,7 +74,8 @@ export default class Model {
     extraStop: string[] = ['\n'],
     threadId?: string,
     imageUrl?: string,
-    noteTaker = false
+    noteTaker = false,
+    noThink = false
   ): Promise<string> {
     this.busy = true
     try {
@@ -88,7 +91,8 @@ export default class Model {
             stop,
             threadId,
             imageUrl,
-            noteTaker
+            noteTaker,
+            noThink
           )
         } catch (e) {
           // Transient failures (server down, HTTP error, non-JSON, timeout) are retried like empties
@@ -127,6 +131,23 @@ export default class Model {
         flag: 'a+',
       })
       return res
+    })
+  }
+
+  // One-line caption for an image attachment — stored with the turn so the model can remember
+  // what the image showed (the images themselves are never stored). Text backends can't see
+  // images, so there is nothing to caption there.
+  async captionImage (dataUrl: string): Promise<string | undefined> {
+    if (env.LLM_MODE !== 'chat') return undefined
+    return await this.enqueue(async () => {
+      // noThink: reasoning models would burn the whole budget on reasoning_content and return
+      // empty content (finish_reason: length) — with thinking off, 40 tokens are plenty for a
+      // ≤20-word caption.
+      const caption = (await this.complete(
+        'Describe this image in one short factual phrase, max 20 words, no preamble.\nCaption:',
+        40, 1.0, ['\n'], undefined, dataUrl, true, true
+      )).trim()
+      return caption || undefined
     })
   }
 

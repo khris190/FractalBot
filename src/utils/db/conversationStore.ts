@@ -1,6 +1,6 @@
 import db from './db'
 import { ConversationTurn } from './schema'
-import { eq, and, asc, inArray } from 'drizzle-orm'
+import { eq, and, asc, inArray, ne } from 'drizzle-orm'
 
 export interface Turn {
   messageId: string | null
@@ -36,6 +36,15 @@ const store = {
     return true
   },
 
+  // Replace the trailing ' [image]' marker with ' [image: caption]' (caption-at-ingest) so
+  // future prompts remember what the image showed. No-op when the row is gone or already captioned.
+  setTurnImageCaption (messageId: string, caption: string): boolean {
+    const row = db.select().from(ConversationTurn).where(eq(ConversationTurn.messageId, messageId)).get()
+    if (!row || !row.content.endsWith(' [image]')) return false
+    db.update(ConversationTurn).set({ content: row.content.slice(0, -' [image]'.length) + ` [image: ${caption}]` }).where(eq(ConversationTurn.messageId, messageId)).run()
+    return true
+  },
+
   // Live-context view: promoted rows are a permanent archive (kept out of chat prompts
   // so they can't bloat or pollute the context); use getAllThreads to see everything.
   getThread (threadId: string): Turn[] {
@@ -53,6 +62,16 @@ const store = {
       map.get(row.threadId)!.push({ messageId: row.messageId ?? null, role: row.role, content: row.content, upvotes: row.upvotes, downvotes: row.downvotes, promoted: !!row.promoted, createdAt: row.createdAt })
     }
     return map
+  },
+
+  // Raw day log: every row in arrival order (id = insertion order), optionally minus one thread.
+  // Feeds the "Today so far" prompt section — the unconsolidated part of the day.
+  getToday (excludeThreadId?: string): Turn[] {
+    const query = db.select().from(ConversationTurn).orderBy(asc(ConversationTurn.id))
+    const rows = excludeThreadId
+      ? query.where(ne(ConversationTurn.threadId, excludeThreadId)).all()
+      : query.all()
+    return rows.map(r => ({ messageId: r.messageId ?? null, role: r.role, content: r.content, upvotes: r.upvotes, downvotes: r.downvotes, promoted: !!r.promoted, createdAt: r.createdAt }))
   },
 
   clearThread (threadId: string): number {
