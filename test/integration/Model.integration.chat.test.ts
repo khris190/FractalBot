@@ -25,7 +25,7 @@ mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
 // Mock DailyRoll before anything loads getLogger — keeps the process from hanging.
-const dailyRollPath = require.resolve('../src/utils/logger/pino-daily-roll')
+const dailyRollPath = require.resolve('../../src/utils/logger/pino-daily-roll')
 require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loaded: true, exports: () => ({ write: () => {}, flush: () => {}, end: () => {} }) } as any
 
 // Passthrough fetch wrapper: captures request payloads, forwards to the real server.
@@ -38,7 +38,7 @@ const realFetch = globalThis.fetch.bind(globalThis)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+const Model = (require('../../src/utils/AI/Model') as typeof import('../../src/utils/AI/Model')).default
 
 let model: InstanceType<typeof Model>
 

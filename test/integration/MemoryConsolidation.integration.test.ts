@@ -28,7 +28,7 @@ mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
 // Mock DailyRoll before anything loads getLogger — keeps the process from hanging.
-const dailyRollPath = require.resolve('../src/utils/logger/pino-daily-roll')
+const dailyRollPath = require.resolve('../../src/utils/logger/pino-daily-roll')
 require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loaded: true, exports: () => ({ write: () => {}, flush: () => {}, end: () => {} }) } as any
 
 // Passthrough fetch wrapper: captures request payloads, forwards to the real server.
@@ -40,10 +40,10 @@ const realFetch = globalThis.fetch.bind(globalThis)
   return realFetch(url, init)
 }
 
-const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
-const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
-const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
-const { dailyFile, warsawYmd } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
+const { default: db } = require('../../src/utils/db/db') as typeof import('../../src/utils/db/db')
+const conversationStore = (require('../../src/utils/db/conversationStore') as typeof import('../../src/utils/db/conversationStore')).default
+const Model = (require('../../src/utils/AI/Model') as typeof import('../../src/utils/AI/Model')).default
+const { dailyFile, warsawYmd } = require('../../src/utils/AI/memoryPyramid') as typeof import('../../src/utils/AI/memoryPyramid')
 
 // Tests don't run drizzle migrations — create the table by hand (same as unit tests).
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
