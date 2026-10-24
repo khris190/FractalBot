@@ -17,7 +17,7 @@ process.env.LLM_DATA_PATH = join(dir, 'LLM')
 mkdirSync(process.env.LLM_DATA_PATH!)
 
 const pyramid = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
-const { ensureLayout, dailyFile, weeklyFile, monthlyFile, yearlyFile, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, nextPromotionUnit, buildMemoryParts, loadTieredMemory, MEMORY_PROMPT_MAX_BYTES } = pyramid
+const { ensureLayout, dailyFile, weeklyFile, monthlyFile, yearlyFile, archiveDir, distillDir, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, nextPromotionUnit, buildMemoryParts, loadTieredMemory, MEMORY_PROMPT_MAX_BYTES } = pyramid
 
 const LEGACY = join(process.env.LLM_DATA_PATH!, 'memory', 'legacy.txt')
 const OLD_MEMORY = join(process.env.LLM_DATA_PATH!, 'memory.txt')
@@ -35,9 +35,10 @@ function reset (files: Record<string, string> = {}) {
 
 // ============ Layout + migration ============
 
-test('ensureLayout creates the tier dirs and is idempotent', () => {
+test('ensureLayout creates the tier + artifact dirs and is idempotent', () => {
   reset()
   assert.ok(existsSync(dailyFile('2026-01-01').slice(0, dailyFile('2026-01-01').lastIndexOf('/')))) // daily dir
+  assert.ok(existsSync(archiveDir) && existsSync(distillDir), 'artifact dirs created')
   ensureLayout() // second call: no memory.txt, nothing to do
   assert.ok(!existsSync(OLD_MEMORY))
 })

@@ -5,9 +5,11 @@
  *     memory/
  *       legacy.txt            — pre-pyramid memory.txt (migrated once, injected, never merged)
  *       daily/2026-10-24.txt  — raw distillation of each day's conversations (append-only)
- *       weekly/2026-W43.txt   — merged from the week's dailies (deleted after merge)
+ *       weekly/2026-W43.txt   — merged from the week's dailies (inputs archived, then deleted)
  *       monthly/2026-10.txt   — merged from the month's weeklies
  *       yearly/2026.txt       — merged from the year's monthlies
+ *       archive/2026-W43.inputs.txt — the merged input notes (quality artifact, never injected)
+ *       distill/2026-10-24.txt      — the prompt transcript per conversation day (quality artifact)
  *
  * Promotion rule (the "daily sleep" runs it): once a CALENDAR unit is fully in the past,
  * it is merged into the tier above and its input files are deleted. A week is complete
@@ -37,11 +39,18 @@ export const dailyDir = join(MEMORY_DIR, 'daily')
 export const weeklyDir = join(MEMORY_DIR, 'weekly')
 export const monthlyDir = join(MEMORY_DIR, 'monthly')
 export const yearlyDir = join(MEMORY_DIR, 'yearly')
+// Quality artifacts — never injected into prompts, never scanned for promotions.
+export const archiveDir = join(MEMORY_DIR, 'archive')
+export const distillDir = join(MEMORY_DIR, 'distill')
 
 export const dailyFile = (ymd: string): string => join(dailyDir, `${ymd}.txt`)
 export const weeklyFile = (weekKey: string): string => join(weeklyDir, `${weekKey}.txt`)
 export const monthlyFile = (monthKey: string): string => join(monthlyDir, `${monthKey}.txt`)
 export const yearlyFile = (yearKey: string): string => join(yearlyDir, `${yearKey}.txt`)
+// Merged inputs of one promotion, keyed like the target (e.g. archive/2026-W43.inputs.txt).
+export const archiveFile = (key: string): string => join(archiveDir, `${key}.inputs.txt`)
+// The prompt transcript of one conversation day, appended per run.
+export const distillFile = (ymd: string): string => join(distillDir, `${ymd}.txt`)
 
 // ============ Warsaw calendar helpers ============
 
@@ -84,12 +93,14 @@ export const yearKeyOfYmd = (ymd: string): string => ymd.slice(0, 4) // 'YYYY'
 
 // ============ Layout ============
 
-// Creates the tier dirs and migrates the pre-pyramid memory.txt once (idempotent).
+// Creates the tier dirs (and artifact dirs) and migrates the pre-pyramid memory.txt once (idempotent).
 export function ensureLayout (): void {
   mkdirSync(dailyDir, { recursive: true })
   mkdirSync(weeklyDir, { recursive: true })
   mkdirSync(monthlyDir, { recursive: true })
   mkdirSync(yearlyDir, { recursive: true })
+  mkdirSync(archiveDir, { recursive: true })
+  mkdirSync(distillDir, { recursive: true })
   if (existsSync(OLD_MEMORY_FILE)) {
     if (existsSync(LEGACY_FILE)) {
       // Legacy already migrated; fold any straggler in instead of clobbering it.

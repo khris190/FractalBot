@@ -56,7 +56,7 @@ let forcedRawText: string | null = null
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
-const { ensureLayout, dailyFile, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, weeklyFile } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
+const { ensureLayout, dailyFile, distillFile, archiveFile, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, weeklyFile } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
 
 function reset () {
   captured = []
@@ -143,9 +143,15 @@ test('consolidateMemory distills all threads into the current daily file and cle
   responder = () => 'Alice loves pizza. Bob likes the weather.'
   await model.consolidateMemory()
 
-  const memory = readFileSync(dailyFile(warsawYmd(new Date())), 'utf8')
+  const ymd = warsawYmd(new Date())
+  const memory = readFileSync(dailyFile(ymd), 'utf8')
   assert.ok(memory.includes('Alice loves pizza.'))
   assert.equal(conversationStore.getAllThreads().size, 0)
+
+  // Quality artifact: the raw prompt transcript is dumped per conversation day, before the wipe.
+  const dump = readFileSync(distillFile(ymd), 'utf8')
+  assert.ok(dump.includes('Alice: I love pizza'))
+  assert.ok(dump.includes('Bob: the weather is nice'))
 })
 
 test('consolidateMemory is a no-op when the DB is empty', async () => {
@@ -227,6 +233,7 @@ test('consolidateMemory LLM failure leaves DB un-cleared, memory untouched, queu
 
   assert.equal(conversationStore.getAllThreads().size, 1, 'rows survive the failed run')
   assert.ok(!existsSync(dailyFile(warsawYmd(new Date()))), 'no memory written on failure')
+  assert.ok(!existsSync(distillFile(warsawYmd(new Date()))), 'no transcript dump on failure')
 
   // the single-flight queue is not wedged — the next run works
   responder = () => 'recovered notes'
@@ -322,6 +329,13 @@ test('promoteMemory merges a complete week of dailies into the weekly file and d
   assert.ok(existsSync(weeklyFile(wk)), 'weekly file written')
   assert.ok(readFileSync(weeklyFile(wk), 'utf8').includes('merged week: all facts kept'))
   for (const d of days) assert.ok(!existsSync(dailyFile(d)), `daily ${d} deleted after merge`)
+
+  // Quality artifact: the merged inputs (old values) are kept in the archive, not lost.
+  const archived = readFileSync(archiveFile(wk), 'utf8')
+  for (const d of days) {
+    assert.ok(archived.includes(`## ${d}`), `input header ${d} archived`)
+    assert.ok(archived.includes(`fact from ${d}`), `input content ${d} archived`)
+  }
 })
 
 test('promoteMemory LLM failure keeps the input dailies (retried on the next run)', async () => {
@@ -339,6 +353,7 @@ test('promoteMemory LLM failure keeps the input dailies (retried on the next run
   await assert.rejects(() => model.promoteMemory())
   for (const d of days) assert.ok(existsSync(dailyFile(d)), `daily ${d} survives the failed merge`)
   assert.ok(!existsSync(weeklyFile(wk)), 'no weekly file on failure')
+  assert.ok(!existsSync(archiveFile(wk)), 'no archive on failure')
 })
 
 test('stop array always includes the thinking tags', async () => {

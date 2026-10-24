@@ -6,7 +6,7 @@ import getLogger from '../logger/getLogger'
 import conversationStore from '../db/conversationStore'
 import { createBackend } from './backendFactory'
 import { loadMemory, buildPrompt } from './prompt'
-import { ensureLayout, dailyFile, warsawYmd, nextPromotionUnit, PromotionUnit } from './memoryPyramid'
+import { ensureLayout, dailyFile, distillFile, archiveFile, warsawYmd, nextPromotionUnit, PromotionUnit } from './memoryPyramid'
 
 const HISTORY_FILE = join(env.LLM_DATA_PATH, 'history.txt')
 
@@ -169,7 +169,11 @@ export default class Model {
       const notes = await this.complete(compressionPrompt, 1000, 1.0, ['\n'], undefined, undefined, true)
 
       if (notes) {
-        await this.doAppendMemory(notes, warsawYmd(newestRow ?? new Date()))
+        const ymd = warsawYmd(newestRow ?? new Date())
+        // Quality artifact: the exact transcript sent to the LLM, kept per conversation day
+        // (written before the rows are deleted so it survives the wipe).
+        writeFileSync(distillFile(ymd), `--- run ${new Date().toISOString()} ---\n${transcript}\n`, { flag: 'a+' })
+        await this.doAppendMemory(notes, ymd)
       }
       conversationStore.clearAll()
     })
@@ -215,6 +219,9 @@ export default class Model {
       }
     }
 
+    // Quality artifact: keep the merged input notes (the "old values") out of the prompt and
+    // out of the way of future promotions — the pyramid only scans the tier dirs.
+    writeFileSync(archiveFile(unit.key), input + '\n')
     writeFileSync(unit.target, merged + '\n')
     for (const f of unit.inputs) unlinkSync(f)
     this.logger.info(`memory: merged ${unit.inputs.length} ${unit.inputs.map((f) => basename(f)).join(', ')} → ${basename(unit.target)}`)
