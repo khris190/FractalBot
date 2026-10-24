@@ -46,9 +46,10 @@ require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loa
 
 // Mock Client BEFORE requiring the handler — no real Discord client in tests.
 const BOT_ID = '100'
+const activities: string[] = []
 require.cache[require.resolve('../src/Client')] = {
   id: 'mock-client', filename: 'mock-client', loaded: true,
-  exports: { default: { client: { user: { id: BOT_ID, displayName: 'Chucha' } } }, __esModule: true },
+  exports: { default: { client: { user: { id: BOT_ID, displayName: 'Chucha', setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
 } as any
 
 // Mock ReplyHelper — records replies instead of sleeping/sending.
@@ -113,6 +114,7 @@ function reset () {
   chatImages = []
   imageFetchBody = null
   imageFetchUrls = []
+  activities.length = 0
   replied.length = 0
   ;(LLMPingResponseHandler as any).model = defaultModelStub()
   ;(LLMPingResponseHandler as any).model.busy = false
@@ -245,6 +247,13 @@ test('non-image and oversized attachments are not sent (marker only for real ima
   assert.deepEqual(chatImages, [undefined, undefined], 'no data URL sent for either')
   assert.ok(!conversationStore.getThread('h0')[0].content.includes('[image]'), 'pdf gets no marker')
   assert.ok(conversationStore.getThread('h1')[0].content.includes('[image]'), 'oversized image still gets the marker')
+})
+
+test('reports answering activity while the LLM runs, idle after', async () => {
+  reset()
+  const msg = makeMessage({ id: 's1', authorId: settings.ADMINS[0], content: '<@100> hi', mentionChucha: true })
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  assert.deepEqual(activities, ['💬 answering', 'Balala'])
 })
 
 test('Chucha replies are seeded with 👍 and 👎 reactions', async () => {

@@ -7,6 +7,14 @@ const handlerPath = require.resolve('../src/responses/LLMPingResponseHandler')
 const handlerModule = { default: { model: null as any }, __esModule: true }
 require.cache[handlerPath] = { id: handlerPath, filename: handlerPath, loaded: true, exports: handlerModule } as any
 
+// Mock Client BEFORE requiring the interval — the interval's status helper would otherwise
+// load the real Discord client + file loggers.
+const activities: string[] = []
+require.cache[require.resolve('../src/Client')] = {
+  id: 'mock-client', filename: 'mock-client', loaded: true,
+  exports: { default: { client: { user: { id: '100', displayName: 'Chucha', setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
+} as any
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: interval } = require('../src/intervals/MemoryConsolidation') as typeof import('../src/intervals/MemoryConsolidation')
 
@@ -74,6 +82,13 @@ test('fires consolidateMemory exactly at 05:00 Warsaw', async () => {
   assert.equal(stub.promoteCalls, 1, 'promotion pass runs after consolidation')
   assert.equal(interval.lastRunDate, '2026-01-02')
   assert.ok(logger.entries.some(e => e.level === 'info' && /starting/.test(e.msg)))
+})
+
+test('reports dreaming activity while consolidating, idle after', async () => {
+  const { stub, logger } = setup()
+  activities.length = 0
+  await interval.run({} as any, logger, W0500)
+  assert.deepEqual(activities, ['🌙 dreaming', 'Balala'])
 })
 
 test('does nothing off-target (05:01)', async () => {

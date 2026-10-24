@@ -1,5 +1,6 @@
 import { Client } from '../Client'
 import LLMPingResponseHandler from '../responses/LLMPingResponseHandler'
+import { status } from '../utils/status'
 import ILogger from '../utils/logger/ILogger'
 import BaseInterval from './BaseInterval'
 
@@ -30,6 +31,7 @@ class MemoryConsolidationInterval extends BaseInterval {
     this.lastRunDate = today
 
     logger.info('Scheduled memory consolidation starting')
+    status.beginDreaming()
     try {
       const model = LLMPingResponseHandler.model
       // No busy-wait needed — both runs go through the Model's single-flight queue.
@@ -42,6 +44,8 @@ class MemoryConsolidationInterval extends BaseInterval {
       // Consolidation is already a no-op when there's nothing to compress, so this only
       // logs on real failures; we never want it to take the bot down.
       logger.error('Scheduled memory consolidation failed', e as Error)
+    } finally {
+      status.endDreaming()
     }
   }
 }

@@ -4,6 +4,7 @@ import Client from '../Client'
 import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import Model from '../utils/AI/Model'
 import conversationStore from '../utils/db/conversationStore'
+import { status } from '../utils/status'
 import { settings } from '../settings'
 
 // Max size of an image attachment forwarded to the LLM (8 MB)
@@ -100,6 +101,7 @@ class LLMPingResponseHandler extends BaseResponseHandler {
         let response = this.#settings.cooldownMessage
         if (settings.ADMINS.some((a:string) => a === message.author.id) || this.#checkCooldown()) {
           message.channel.sendTyping()
+          status.beginAnswering()
           try {
             const threadId = await this.prepareThread(message)
             const imageUrl = await this.extractImageDataUrl(message)
@@ -121,6 +123,8 @@ class LLMPingResponseHandler extends BaseResponseHandler {
             this.logger.error('LLM chucha error', error as Error)
             response = 'Error, please call my idiot of a creator, thanks.'
             ReplyHelper.respond(message, ResponseType.REPLY, { content: response })
+          } finally {
+            status.endAnswering()
           }
         } else {
           ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
