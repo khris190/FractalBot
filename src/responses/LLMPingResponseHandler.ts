@@ -5,7 +5,6 @@ import ReplyHelper, { ResponseType } from '../utils/ReplyHelper'
 import Model from '../utils/AI/Model'
 import conversationStore from '../utils/db/conversationStore'
 import { status } from '../utils/status'
-import { settings } from '../settings'
 
 // Max size of an image attachment forwarded to the LLM (8 MB)
 export const MAX_IMAGE_SIZE = 8 * 1024 * 1024
@@ -14,19 +13,15 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   model = new Model()
 
   #settings = {
-    cooldownMs: 1000 * 10,
-    cooldownMessage: 'Can you pipe down and give me a minute? Like, literally?',
+    // Single-flight answering: at most ONE ping in flight, up to two more waiting (FIFO).
+    // Beyond that Chucha pushes back. Dreaming is handled separately — sleep ignores everyone.
+    maxWaiting: 2,
+    overflowMessage: 'Can you pipe down and give me a minute? Like, literally?',
+    dreamingMessage: "I'm asleep. The only things I answer right now are dreams.",
   }
 
-  lastMessageTime = 0
-  #checkCooldown (cooldown = this.#settings.cooldownMs):boolean {
-    const time = new Date().getTime()
-    if (this.lastMessageTime + cooldown < time) {
-      this.lastMessageTime = time
-      return true
-    }
-    return false
-  }
+  #running = false
+  #waiting: OmitPartialGroupDMChannel<Message<boolean>>[] = []
 
   // Walk up the reference chain to find the root threadId and store each message in DB
   // (deduped by messageId — Chucha's replies are stored at generation time, so they're no-ops here).
@@ -95,55 +90,77 @@ class LLMPingResponseHandler extends BaseResponseHandler {
       if (message.mentions.users.some((user, key, coll) => {
         return user.id === Client.client.user?.id
       })) {
-        if (this.model.busy) {
-          return false
+        // Dreaming = sleep: Chucha ignores everyone — no queueing, no admin bypass.
+        if (status.isDreaming()) {
+          ReplyHelper.respond(message, ResponseType.REPLY, { content: this.#settings.dreamingMessage })
+          this.logger.info('ping ignored — Chucha is dreaming', { author: message.author.displayName })
+          return true
         }
-        let response = this.#settings.cooldownMessage
-        if (settings.ADMINS.some((a:string) => a === message.author.id) || this.#checkCooldown()) {
-          message.channel.sendTyping()
-          status.beginAnswering()
-          try {
-            const threadId = await this.prepareThread(message)
-            const imageUrl = await this.extractImageDataUrl(message)
-            const reply = await this.model.chatWithChucha(threadId, imageUrl)
-
-            // Send and store Chucha's response with its real Discord messageId so future
-            // reference-walks dedupe it (no duplicate turns, no lost context)
-            const sentMsg = await message.reply({ content: reply })
-            conversationStore.addTurn(threadId, sentMsg.id, 'assistant', `Chucha: ${reply}`)
-            // Seed 👍/👎 so users can rate the answer. Votes are tracked in DB by messageId
-            // (see Client reaction listeners); a failure here must not undo the already-sent reply.
-            try {
-              await sentMsg.react('👍')
-              await sentMsg.react('👎')
-            } catch (e) {
-              this.logger.error('failed to add rating reactions', e as Error)
-            }
-            // Caption the image so future prompts remember what it showed (the image itself is
-            // never stored). A failure keeps the plain [image] marker — it must not undo the reply.
-            if (imageUrl) {
-              try {
-                const caption = await this.model.captionImage(imageUrl)
-                if (caption) conversationStore.setTurnImageCaption(message.id, caption)
-              } catch (e) {
-                this.logger.warn('image caption failed, keeping plain [image] marker', e as Error)
-              }
-            }
-          } catch (error) {
-            this.logger.error('LLM chucha error', error as Error)
-            response = 'Error, please call my idiot of a creator, thanks.'
-            ReplyHelper.respond(message, ResponseType.REPLY, { content: response })
-          } finally {
-            status.endAnswering()
-          }
-        } else {
-          ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: response })
+        if (!this.#running) {
+          this.#running = true
+          await this.#answer(message)
+          return true
         }
-        this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
+        if (this.#waiting.length < this.#settings.maxWaiting) {
+          this.#waiting.push(message)
+          this.logger.info('ping queued behind the current answer', { author: message.author.displayName, position: this.#waiting.length })
+          return true
+        }
+        ReplyHelper.respond(message, ResponseType.DELAY_REPLY, { content: this.#settings.overflowMessage })
+        this.logger.info('ping rejected — queue full', { author: message.author.displayName })
         return true
       }
     }
     return false
+  }
+
+  // The full answer pipeline — single-flight: at most one at a time (LLM, sends, DB and the
+  // image caption all included). `finally` pulls the next queued ping, so the queue always
+  // drains, even when the LLM errors out.
+  async #answer (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<void> {
+    message.channel.sendTyping()
+    status.beginAnswering()
+    try {
+      const threadId = await this.prepareThread(message)
+      const imageUrl = await this.extractImageDataUrl(message)
+      const reply = await this.model.chatWithChucha(threadId, imageUrl)
+
+      // Send and store Chucha's response with its real Discord messageId so future
+      // reference-walks dedupe it (no duplicate turns, no lost context)
+      const sentMsg = await message.reply({ content: reply })
+      conversationStore.addTurn(threadId, sentMsg.id, 'assistant', `Chucha: ${reply}`)
+      // Seed 👍/👎 so users can rate the answer. Votes are tracked in DB by messageId
+      // (see Client reaction listeners); a failure here must not undo the already-sent reply.
+      try {
+        await sentMsg.react('👍')
+        await sentMsg.react('👎')
+      } catch (e) {
+        this.logger.error('failed to add rating reactions', e as Error)
+      }
+      // Caption the image so future prompts remember what it showed (the image itself is
+      // never stored). A failure keeps the plain [image] marker — it must not undo the reply.
+      if (imageUrl) {
+        try {
+          const caption = await this.model.captionImage(imageUrl)
+          if (caption) conversationStore.setTurnImageCaption(message.id, caption)
+        } catch (e) {
+          this.logger.warn('image caption failed, keeping plain [image] marker', e as Error)
+        }
+      }
+    } catch (error) {
+      this.logger.error('LLM chucha error', error as Error)
+      ReplyHelper.respond(message, ResponseType.REPLY, { content: 'Error, please call my idiot of a creator, thanks.' })
+    } finally {
+      status.endAnswering()
+      this.#running = false
+      const next = this.#waiting.shift()
+      if (next) {
+        this.#running = true
+        // #answer swallows pipeline errors itself — this only guards against a leak (e.g. sendTyping)
+        this.#answer(next).catch((e) => this.logger.error('queued answer failed', e as Error))
+      }
+    }
+    this.logger.info('Replied to the @ping message ', { author: message.author.displayName })
   }
 }
 

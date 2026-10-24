@@ -2,7 +2,7 @@ import Client from '../Client'
 
 // Dynamic Discord activity — what Chucha is doing right now.
 // Dreaming (memory consolidation) wins over answering: that's what happens while sleeping,
-// and a dreaming model is busy, so pings are blocked anyway (see Model.busy).
+// and a sleeping Chucha ignores everyone (the ping handler checks isDreaming before queueing).
 // Counters, not booleans — overlapping runs must not clear the activity until the LAST one ends.
 const IDLE_ACTIVITY = 'Balala'
 const ANSWERING_ACTIVITY = '💬 answering'
@@ -21,4 +21,5 @@ export const status = {
   endAnswering (): void { if (answering > 0) answering--; refresh() },
   beginDreaming (): void { dreaming++; refresh() },
   endDreaming (): void { if (dreaming > 0) dreaming--; refresh() },
+  isDreaming (): boolean { return dreaming > 0 },
 }

@@ -69,6 +69,7 @@ const LLMPingResponseHandler = handlerModule.default
 const { MAX_IMAGE_SIZE } = handlerModule
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { settings } = require('../src/settings')
+const { status } = require('../src/utils/status') as typeof import('../src/utils/status')
 
 let chatCalls: string[] = []
 let chatImages: Array<string | undefined> = []
@@ -146,13 +147,18 @@ test('prepareThread is idempotent — re-walking the chain adds no duplicate row
   assert.equal(conversationStore.getThread('root2').length, 2)
 })
 
-test('_handle returns false when the model is busy', async () => {
+test('dreaming (sleeping) pings get the sleep message and are ignored — no LLM call, nothing queued', async () => {
   reset()
   const msg = makeMessage({ id: 'a3', authorId: '400', content: '<@100> hi', mentionChucha: true })
-  ;(LLMPingResponseHandler as any).model.busy = true
-
-  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), false)
-  assert.deepEqual(chatCalls, [])
+  status.beginDreaming()
+  try {
+    assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+    assert.deepEqual(chatCalls, [])
+    const last = replied[replied.length - 1]
+    assert.ok(last.content!.includes('asleep'), 'sleep message sent')
+  } finally {
+    status.endDreaming()
+  }
 })
 
 test('_handle returns false when Chucha is not mentioned', async () => {
@@ -178,17 +184,34 @@ test('admin ping replies and stores Chucha turn with the real reply messageId', 
   assert.deepEqual(turns.filter(t => t.messageId).map(t => t.messageId), ['c1', sentIds[0]])
 })
 
-test('second non-admin ping within cooldown gets the cooldown message, no extra LLM call', async () => {
+test('one in flight + two waiting (FIFO); the next ping gets the overflow message', async () => {
   reset()
+  // Gate only the first LLM call so pings 2–3 queue behind it; later calls resolve immediately.
+  let releaseFirst: ((v: string) => void) | null = null
+  ;(LLMPingResponseHandler as any).model.chatWithChucha = (threadId?: string) => {
+    chatCalls.push(threadId ?? '')
+    if (releaseFirst === null) return new Promise<string>(resolve => { releaseFirst = resolve })
+    return Promise.resolve('mock reply')
+  }
   const mk = (id: string) => makeMessage({ id, authorId: '999', content: '<@100> hi', mentionChucha: true })
+  const settle = () => new Promise(resolve => setImmediate(resolve))
 
-  assert.equal(await LLMPingResponseHandler.handleMessage(mk('d1') as any), true) // first ping passes cooldown
-  assert.deepEqual(chatCalls, ['d1'])
+  const first = LLMPingResponseHandler.handleMessage(mk('d1') as any)
+  await settle() // let d1 grab the in-flight slot
 
-  assert.equal(await LLMPingResponseHandler.handleMessage(mk('d2') as any), true) // within 60s → cooldown msg
-  assert.deepEqual(chatCalls, ['d1'], 'no second LLM call')
-  const last = replied[replied.length - 1]
-  assert.ok(last.content!.includes('pipe down'), 'cooldown message sent')
+  assert.equal(await LLMPingResponseHandler.handleMessage(mk('d2') as any), true) // waits, 1st
+  assert.equal(await LLMPingResponseHandler.handleMessage(mk('d3') as any), true) // waits, 2nd
+  assert.equal(await LLMPingResponseHandler.handleMessage(mk('d4') as any), true) // over capacity
+  assert.deepEqual(chatCalls, ['d1'], 'queued pings are not answered yet')
+  assert.ok(replied[replied.length - 1].content!.includes('pipe down'), 'overflow message sent')
+
+  releaseFirst!('mock reply')
+  await first
+  await settle() // let the queue drain (d2 then d3)
+  await settle()
+
+  assert.deepEqual(chatCalls, ['d1', 'd2', 'd3'], 'queue drained in arrival order')
+  assert.ok(conversationStore.getThread('d3').some(t => t.role === 'assistant'), 'last queued ping got its stored answer')
 })
 
 test('LLM errors produce the fallback error reply', async () => {
