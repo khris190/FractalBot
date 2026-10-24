@@ -33,8 +33,9 @@ const conversationStore = (require('../src/utils/db/conversationStore') as typeo
 // Stub fetch before module load: the handler's real Model fires a preload call on construction.
 // imageFetchBody (set per test) lets image-attachment fetches return a real buffer.
 let imageFetchBody: Buffer | null = null
+let imageFetchUrls: string[] = []
 ;(globalThis as any).fetch = async (url: string) => {
-  if (imageFetchBody) return new Response(new Uint8Array(imageFetchBody))
+  if (imageFetchBody) { imageFetchUrls.push(url); return new Response(new Uint8Array(imageFetchBody)) }
   return new Response(JSON.stringify({ content: '' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
@@ -111,6 +112,7 @@ function reset () {
   chatCalls = []
   chatImages = []
   imageFetchBody = null
+  imageFetchUrls = []
   replied.length = 0
   ;(LLMPingResponseHandler as any).model = defaultModelStub()
   ;(LLMPingResponseHandler as any).model.busy = false
@@ -211,6 +213,21 @@ test('image attachment is fetched, marked [image] in the turn, and passed as a d
   assert.ok(turn, 'user turn stored')
   assert.ok(turn.content.endsWith('[image]'), 'user turn marked with [image]')
   assert.equal(chatImages[0], `data:image/png;base64,${png.toString('base64')}`)
+})
+
+test('webp attachment is transcoded to png via Discord CDN (?format=png)', async () => {
+  reset()
+  // minimal Collection stand-in (first + some, like discord.js Collection)
+  const fakeAttachments = (list: any[]) => ({ first: () => list[0], some: (fn: (a: any) => boolean) => list.some(fn) })
+
+  const webp = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00])
+  imageFetchBody = webp
+  const msg = makeMessage({ id: 'g2', authorId: settings.ADMINS[0], content: '<@100> what is this', mentionChucha: true })
+  msg.attachments = fakeAttachments([{ contentType: 'image/webp', size: webp.length, url: 'https://cdn.example/img.webp' }])
+
+  assert.equal(await LLMPingResponseHandler.handleMessage(msg as any), true)
+  assert.deepEqual(imageFetchUrls, ['https://media.discordapp.net/img.webp?format=png'], 'transcoded via media host + format param')
+  assert.equal(chatImages[0], `data:image/png;base64,${webp.toString('base64')}`, 'data URL reports png MIME')
 })
 
 test('non-image and oversized attachments are not sent (marker only for real images)', async () => {

@@ -90,17 +90,12 @@ export class Client {
       const isUpvote = reaction.emoji.name === '👍'
       const isDownvote = reaction.emoji.name === '👎'
       if (isUpvote || isDownvote) {
-        const updated = conversationStore.recordVote(
+        conversationStore.recordVote(
           reaction.message.id,
           isUpvote,
           added
         )
-        this.logger.info('Recorded vote on Chucha answer', {
-          messageId: reaction.message.id,
-          vote: isUpvote ? 'up' : 'down',
-          added,
-          updated,
-        })
+        this.logger.info('Recorded vote on Chucha answer')
       }
       this.logger.debug('Reaction on chucha answer')
     }

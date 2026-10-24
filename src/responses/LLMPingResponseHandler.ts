@@ -60,8 +60,9 @@ class LLMPingResponseHandler extends BaseResponseHandler {
   }
 
   // Pick the single image attachment (image content-type, ≤ 8MB) and fetch it as a base64
-  // data URL for the chat backend. Non-images, oversized files and download failures all
-  // degrade to no-image (logged) — they must never block the reply.
+  // data URL for the chat backend. WebP is transcoded by Discord's media host (?format=png)
+  // because the llama.cpp server can't decode WebP. Non-images, oversized files and download
+  // failures all degrade to no-image (logged) — they must never block the reply.
   async extractImageDataUrl (message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<string | undefined> {
     const image = message.attachments?.first()
     if (!image) return undefined
@@ -69,10 +70,19 @@ class LLMPingResponseHandler extends BaseResponseHandler {
       return undefined
     }
     try {
-      const res = await fetch(image.url)
+      const url = new URL(image.url)
+      let contentType = image.contentType
+      if (contentType === 'image/webp') {
+        // Only the media host honors ?format=png (cdn.host ignores it — verified on a real URL);
+        // the signed ex/is/hm params are valid on both hosts.
+        url.hostname = 'media.discordapp.net'
+        url.searchParams.set('format', 'png')
+        contentType = 'image/png'
+      }
+      const res = await fetch(url.toString())
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const buf = Buffer.from(await res.arrayBuffer())
-      return `data:${image.contentType};base64,${buf.toString('base64')}`
+      return `data:${contentType};base64,${buf.toString('base64')}`
     } catch (e) {
       this.logger.warn('failed to fetch image attachment, replying without it', e as Error)
       return undefined

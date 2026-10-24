@@ -93,9 +93,7 @@ export default class Model {
         } catch (e) {
           // Transient failures (server down, HTTP error, non-JSON, timeout) are retried like empties
           lastError = e
-          this.logger.warn(
-            `LLM request failed (attempt ${attempt}/${MAX_ATTEMPTS})`, e as Error
-          )
+          this.logger.warn(`LLM request failed (attempt ${attempt}/${MAX_ATTEMPTS})`)
           continue
         }
         if (content !== '') return content
