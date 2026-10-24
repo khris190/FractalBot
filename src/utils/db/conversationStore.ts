@@ -1,6 +1,6 @@
 import db from './db'
 import { ConversationTurn } from './schema'
-import { eq, asc, inArray } from 'drizzle-orm'
+import { eq, and, asc, inArray } from 'drizzle-orm'
 
 export interface Turn {
   messageId: string | null
@@ -34,8 +34,12 @@ const store = {
     return true
   },
 
+  // Live-context view: promoted rows are a permanent archive (kept out of chat prompts
+  // so they can't bloat or pollute the context); use getAllThreads to see everything.
   getThread (threadId: string): Turn[] {
-    const rows = db.select().from(ConversationTurn).where(eq(ConversationTurn.threadId, threadId)).orderBy(asc(ConversationTurn.id)).all()
+    const rows = db.select().from(ConversationTurn)
+      .where(and(eq(ConversationTurn.threadId, threadId), eq(ConversationTurn.promoted, 0)))
+      .orderBy(asc(ConversationTurn.id)).all()
     return rows.map(r => ({ messageId: r.messageId ?? null, role: r.role, content: r.content, upvotes: r.upvotes, downvotes: r.downvotes, promoted: !!r.promoted }))
   },
 

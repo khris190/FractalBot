@@ -171,7 +171,7 @@ test('consolidateMemory excludes downvoted answers from the transcript', async (
   assert.ok(!req.body.prompt.includes('Chucha: a bad answer'), 'downvoted answer excluded')
 })
 
-test('consolidateMemory archives high-upvote answers (promoted) and skips them next run', async () => {
+test('consolidateMemory distills highly-rated answers with a ⭐ marker and deletes all rows', async () => {
   reset()
   const model = await makeModel()
 
@@ -182,21 +182,109 @@ test('consolidateMemory archives high-upvote answers (promoted) and skips them n
   responder = () => 'great answer noted'
   await model.consolidateMemory()
 
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('⭐ highly-rated answer: Chucha: great answer!'), 'upvoted answer starred in the transcript')
+  assert.ok(req.body.prompt.includes('Bob: tell me a fact'))
+
   const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
   assert.ok(memory.includes('great answer noted'))
+  assert.equal(conversationStore.getAllThreads().size, 0, 'all rows deleted — memory.txt is the archive')
 
-  // the high-upvote row survives as a promoted archive; everything else wiped
-  let allRows: any[] = []
-  for (const rows of conversationStore.getAllThreads().values()) allRows = allRows.concat(rows)
-  assert.equal(allRows.length, 1)
-  assert.equal(allRows[0].messageId, 'a2')
-  assert.equal(allRows[0].promoted, true)
-
-  // second run: only the promoted row remains → nothing new to distill (no LLM call)
+  // second run: DB is empty → no LLM call
   const before = captured.length
   responder = () => { throw new Error('should not be called') }
   await model.consolidateMemory()
-  assert.equal(captured.length, before, 'no second LLM call for already-promoted rows')
+  assert.equal(captured.length, before, 'no LLM call when the DB is empty')
+})
+
+test('consolidateMemory distills leftover promoted rows (⭐) and deletes them', async () => {
+  reset()
+  const model = await makeModel()
+
+  // Simulate leftovers from an earlier run: a row already flagged promoted
+  conversationStore.addTurn('lp1', 'lu1', 'user', 'Alice: what was that fact?')
+  conversationStore.addTurn('lp1', 'la1', 'assistant', 'Chucha: the archived gem')
+  conversationStore.markPromoted(['la1'])
+
+  responder = () => 'gem distilled'
+  await model.consolidateMemory()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('⭐ highly-rated answer: Chucha: the archived gem'), 'promoted leftover starred')
+  assert.equal(conversationStore.getAllThreads().size, 0, 'promoted row deleted after distillation')
+})
+
+test('consolidateMemory LLM failure leaves DB un-cleared, memory untouched, queue usable', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('f1', 'fm1', 'user', 'Alice: important fact')
+
+  responder = () => { throw new Error('LLM down') }
+  await assert.rejects(() => model.consolidateMemory())
+
+  assert.equal(conversationStore.getAllThreads().size, 1, 'rows survive the failed run')
+  assert.ok(!existsSync(join(process.env.LLM_DATA_PATH!, 'memory.txt')), 'no memory written on failure')
+
+  // the single-flight queue is not wedged — the next run works
+  responder = () => 'recovered notes'
+  await model.consolidateMemory()
+  assert.ok(readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8').includes('recovered notes'))
+})
+
+function allRows (): any[] {
+  let rows: any[] = []
+  for (const r of conversationStore.getAllThreads().values()) rows = rows.concat(r)
+  return rows
+}
+
+test('consolidateMemory: tied votes (1 up / 1 down) are distilled, not promoted', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('tie1', 'tu1', 'user', 'Alice: question?')
+  conversationStore.addTurn('tie1', 'ta1', 'assistant', 'Chucha: a decent answer')
+  conversationStore.recordVote('ta1', true, true)  // 1 up
+  conversationStore.recordVote('ta1', false, true) // 1 down → tie
+
+  responder = () => 'tie noted'
+  await model.consolidateMemory()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('Chucha: a decent answer'), 'tied answer distilled into transcript')
+  assert.equal(allRows().length, 0, 'tied row cleared, not promoted (needs strictly more up than down)')
+})
+
+test('consolidateMemory: zero-vote answers are distilled, not promoted', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('z1', 'zu1', 'user', 'Bob: hello')
+  conversationStore.addTurn('z1', 'za1', 'assistant', 'Chucha: hi bob')
+
+  responder = () => 'hello noted'
+  await model.consolidateMemory()
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('Chucha: hi bob'), 'zero-vote answer distilled')
+  assert.equal(conversationStore.getAllThreads().size, 0, 'all rows cleared; nothing promoted')
+})
+
+test('promoted rows are excluded from the live chat prompt', async () => {
+  reset()
+  const model = await makeModel()
+
+  conversationStore.addTurn('pp1', 'pu1', 'user', 'Alice: question')
+  conversationStore.addTurn('pp1', 'pa1', 'assistant', 'Chucha: archived gem')
+  conversationStore.markPromoted(['pa1'])
+  conversationStore.addTurn('pp1', 'pu2', 'user', 'Alice: follow-up')
+
+  responder = () => 'ok'
+  await model.chatWithChucha('pp1')
+
+  const req = captured[captured.length - 1]
+  assert.ok(req.body.prompt.includes('Alice: follow-up'))
+  assert.ok(!req.body.prompt.includes('Chucha: archived gem'), 'promoted row not in live prompt')
 })
 
 test('appendMemory auto-compresses when memory.txt exceeds the size limit', async () => {

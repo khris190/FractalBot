@@ -11,11 +11,7 @@ class RememberCommand extends AdminChatCommand {
     await interaction.deferReply()
 
     const model = LLMPingResponseHandler.model
-    // Wait for the model to be free (it's single-flight and slow)
-    while (model.busy) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
-
+    // No busy-wait needed — consolidateMemory runs through the Model's single-flight queue.
     try {
       await interaction.editReply('Compressing memory... this might take a while')
       await model.consolidateMemory()

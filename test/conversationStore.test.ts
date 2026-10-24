@@ -107,8 +107,11 @@ test('markPromoted flags rows; clearUnpromoted keeps only promoted rows', () => 
   const cleared = conversationStore.clearUnpromoted()
   assert.equal(cleared, 1) // pm2 (unpromoted user turn) wiped; pm1 kept
 
-  const remaining = conversationStore.getThread('p1')
+  const remaining = conversationStore.getAllThreads().get('p1')!
   assert.equal(remaining.length, 1)
   assert.equal(remaining[0].messageId, 'pm1')
   assert.equal(remaining[0].promoted, true)
+
+  // promoted rows are archive-only — the live-context view no longer sees them
+  assert.deepEqual(conversationStore.getThread('p1'), [])
 })

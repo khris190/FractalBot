@@ -23,7 +23,9 @@ interface LLMBackend {
     temperature: number,
     stop: string[],
     threadId?: string,
-    imageUrl?: string
+    imageUrl?: string,
+    // Consolidation/compression calls: neutral note-taker system + raw prompt as user message
+    noteTaker?: boolean
   ): Promise<string>
 }
 
@@ -71,7 +73,8 @@ export default class Model {
     temperature = 1.0,
     extraStop: string[] = ['\n'],
     threadId?: string,
-    imageUrl?: string
+    imageUrl?: string,
+    noteTaker = false
   ): Promise<string> {
     this.busy = true
     try {
@@ -86,7 +89,8 @@ export default class Model {
             temperature,
             stop,
             threadId,
-            imageUrl
+            imageUrl,
+            noteTaker
           )
         } catch (e) {
           // Transient failures (server down, HTTP error, non-JSON, timeout) are retried like empties
@@ -130,47 +134,38 @@ export default class Model {
     })
   }
 
-  // Distill short-term conversations into long-term notes via LLM (slow), append to memory.txt,
-  // then clear the short-term DB — EXCEPT high-upvote answers, which are kept as a permanent
-  // "best messages" archive (flagged promoted so later runs don't re-distill them).
+  // Distill short-term conversations into long-term notes via LLM (slow) and append to memory.txt,
+  // then delete ALL rows: memory.txt IS the archive, the DB keeps nothing.
+  // Highly-rated answers (upvotes > downvotes, or leftovers flagged promoted by an earlier run)
+  // get a ⭐ marker so the LLM weighs them when writing the notes.
+  // Downvoted answers are distilled nowhere and simply deleted. If the LLM call fails, the rows
+  // are left untouched and get another chance on the next run.
   async consolidateMemory (): Promise<void> {
     return await this.enqueue(async () => {
       const allThreads = conversationStore.getAllThreads()
       if (allThreads.size === 0) return
 
       let transcript = ''
-      const toPromote: string[] = []
       for (const [threadId, turns] of allThreads) {
-        const kept = turns.filter((t) => {
-          if (t.promoted) return false
-          if (t.role === 'assistant' && t.downvotes > t.upvotes) return false
-          return true
-        })
-        for (const t of turns) {
-          if (
-            t.role === 'assistant' &&
-            !t.promoted &&
-            t.upvotes > t.downvotes &&
-            t.messageId
-          ) {
-            toPromote.push(t.messageId)
-          }
-        }
+        const kept = turns.filter((t) => !(t.role === 'assistant' && t.downvotes > t.upvotes))
         if (kept.length > 0) {
-          transcript += `Conversation ${threadId}:\n${kept.map((t) => t.content).join('\n')}\n\n`
+          transcript += `Conversation ${threadId}:\n${kept
+            .map((t) => (t.promoted || (t.role === 'assistant' && t.upvotes > t.downvotes))
+              ? `⭐ highly-rated answer: ${t.content}`
+              : t.content)
+            .join('\n')}\n\n`
         }
       }
 
       if (transcript.trim() === '') return
 
-      const compressionPrompt = `${loadMemory()}${transcript}Summarize these Discord conversations also taking into consideration previous memory into concise notes worth remembering long-term: what happened, who said important things, facts about people. Be brief.\nNotes:`
-      const notes = await this.complete(compressionPrompt, 1000, 1.0, ['\n'])
+      const compressionPrompt = `${loadMemory()}${transcript}Summarize these Discord conversations also taking into consideration previous memory into concise notes worth remembering long-term: what happened, who said what (multi-person chat — attribute statements to their speaker), facts about people. Be brief; keep the notes mostly neutral and factual — a hint of Chucha's voice is fine, rambling is not. ⭐-marked answers were highly rated by the user and are especially worth remembering.\nNotes:`
+      const notes = await this.complete(compressionPrompt, 1000, 1.0, ['\n'], undefined, undefined, true)
 
       if (notes) {
         await this.doAppendMemory(notes)
       }
-      conversationStore.markPromoted(toPromote)
-      conversationStore.clearUnpromoted()
+      conversationStore.clearAll()
     })
   }
 
@@ -197,7 +192,7 @@ export default class Model {
     const content = readFileSync(MEMORY_FILE, 'utf8')
     const compressionPrompt = `Compress these conversation notes into fewer, more concise lines. Keep all important facts.\n\n${content}\n\nCompressed notes:`
 
-    const compressed = await this.complete(compressionPrompt, 2000, 1.0, ['\n'])
+    const compressed = await this.complete(compressionPrompt, 2000, 1.0, ['\n'], undefined, undefined, true)
 
     writeFileSync(MEMORY_TMP_FILE, compressed + '\n')
     renameSync(MEMORY_TMP_FILE, MEMORY_FILE)

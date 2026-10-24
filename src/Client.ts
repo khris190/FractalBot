@@ -15,7 +15,7 @@ import { Defer } from './utils/helpers'
 import ILogger from './utils/logger/ILogger'
 import getLogger from './utils/logger/getLogger'
 import RandomImageInterval from './intervals/RandomImage'
-// import MemoryConsolidationInterval from './intervals/MemoryConsolidation'
+import MemoryConsolidationInterval from './intervals/MemoryConsolidation'
 import PingEveryoneResponseHandler from './responses/PingEveryoneResponseHandler'
 import SpecyficResponseHandler from './responses/SpecyficResponseHandler'
 import RandomResponseHandler from './responses/RandomResponseHandler'
@@ -193,7 +193,7 @@ export class Client {
       // Runs the /remember consolidation once a day at 05:00 (Polish time).
       // Checked every minute; self-guards so it fires exactly once per Warsaw calendar day.
       setInterval(() => {
-        // MemoryConsolidationInterval.callback(this, this.logger)
+        MemoryConsolidationInterval.callback(this, this.logger)
       }, 60 * 1000)
     )
   }

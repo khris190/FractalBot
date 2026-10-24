@@ -21,18 +21,32 @@ export function stripChuchaPrefix (s: string): string {
   return s.replace(/^(?:\s*chucha\s*:\s*)+/i, '').trim()
 }
 
+// Minimal system for non-chat calls (consolidation/compression): no persona, no one-line
+// constraint — note-taking must not inherit the chat constraints (text mode sends prompts as-is).
+const NOTE_TAKER_SYSTEM = 'You are writing long-term memory notes for a Discord bot. Be factual and concise.'
+
 /** OpenAI /v1/chat/completions (system + user messages) */
 export class ChatCompletionBackend {
   async request (
-    _prompt: string,
+    prompt: string,
     maxTokens: number,
     temperature: number,
     stop: string[],
     threadId?: string,
-    imageUrl?: string
+    imageUrl?: string,
+    noteTaker = false
   ): Promise<string> {
-    const systemMessage = this.buildSystemMessage()
-    const { content: userContent, think } = this.buildUserContent(threadId)
+    // With a threadId the user message is rebuilt from the DB thread (source of truth) and the
+    // Chucha persona system applies. Note-taker calls (consolidation/compression) send the
+    // caller's raw prompt as the user message with a neutral system instead — the one-line/
+    // profanity chat constraints would cramp the notes and bleed the persona into them.
+    // Other no-thread calls (preload, unit tests) keep the original empty-thread content.
+    const systemMessage = noteTaker ? NOTE_TAKER_SYSTEM : this.buildSystemMessage()
+    const { content: userContent, think } = threadId !== undefined
+      ? this.buildUserContent(threadId)
+      : noteTaker
+        ? { content: prompt, think: false }
+        : this.buildUserContent()
     // Multimodal only when an image is present — keeps the plain-string payload for text-only turns
     const userMessage: string | ChatContentPart[] = imageUrl
       ? [{ type: 'text', text: userContent }, { type: 'image_url', image_url: { url: imageUrl } }]
@@ -46,7 +60,9 @@ export class ChatCompletionBackend {
       ],
       max_tokens: maxTokens,
       temperature,
-      stop,
+      // "\n" stop is a text-backend convention (one-line continuation); chat replies may span
+      // multiple lines, and stopping on the first newline truncates thinking-tag fragments.
+      stop: stop.filter((s) => s !== '\n'),
       // spec max (OpenAI range [-2, 2]) — keeps strong repetition suppression without 400-ing on strict servers
       frequency_penalty: 2.0,
       // Ask thinking models to spend less on reasoning; some finetuned models ignore it
