@@ -43,6 +43,7 @@ const realFetch = globalThis.fetch.bind(globalThis)
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+const { dailyFile, warsawYmd } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
 
 // Tests don't run drizzle migrations — create the table by hand (same as unit tests).
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
@@ -94,11 +95,12 @@ before(async () => {
   model = new Model()
 })
 
-test('integration: consolidateMemory distills the seeded thread into memory.txt and clears the DB', async () => {
+test('integration: consolidateMemory distills the seeded thread into the daily notes file and clears the DB', async () => {
   await model.consolidateMemory()
 
-  const notesPath = join(process.env.LLM_DATA_PATH!, 'memory.txt')
-  assert.ok(existsSync(notesPath), 'memory.txt should exist after consolidation')
+  // Seeded with current_timestamp → rows are dated today (Warsaw) → today's daily file.
+  const notesPath = dailyFile(warsawYmd(new Date()))
+  assert.ok(existsSync(notesPath), 'daily notes file should exist after consolidation')
   const notes = readFileSync(notesPath, 'utf8').trim()
   assert.ok(notes !== '', `expected non-empty distilled notes, got: ${JSON.stringify(notes)}`)
 

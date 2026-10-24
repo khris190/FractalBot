@@ -56,6 +56,7 @@ let forcedRawText: string | null = null
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+const { ensureLayout, dailyFile, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, weeklyFile } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
 
 function reset () {
   captured = []
@@ -65,15 +66,16 @@ function reset () {
   forcedStatus = null
   forcedRawText = null
   conversationStore.clearAll()
-  for (const f of ['memory.txt', 'memoryTMP.txt', 'history.txt']) {
+  for (const f of ['memory.txt', 'history.txt']) {
     try { rmSync(join(process.env.LLM_DATA_PATH!, f)) } catch {}
   }
+  try { rmSync(join(process.env.LLM_DATA_PATH!, 'memory'), { recursive: true, force: true }) } catch {}
 }
 
 // Let the constructor's preload call drain through the queue.
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
-  await new Promise(r => setTimeout(r, 30))
+  await new Promise(resolve => setTimeout(resolve, 30))
   return model
 }
 
@@ -131,7 +133,7 @@ test('concurrent calls are serialized (no overlapping LLM requests)', async () =
   assert.equal(maxActive, 1, 'only one LLM call in flight at a time')
 })
 
-test('consolidateMemory distills all threads into memory.txt and clears the DB', async () => {
+test('consolidateMemory distills all threads into the current daily file and clears the DB', async () => {
   reset()
   const model = await makeModel()
 
@@ -141,7 +143,7 @@ test('consolidateMemory distills all threads into memory.txt and clears the DB',
   responder = () => 'Alice loves pizza. Bob likes the weather.'
   await model.consolidateMemory()
 
-  const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
+  const memory = readFileSync(dailyFile(warsawYmd(new Date())), 'utf8')
   assert.ok(memory.includes('Alice loves pizza.'))
   assert.equal(conversationStore.getAllThreads().size, 0)
 })
@@ -152,7 +154,7 @@ test('consolidateMemory is a no-op when the DB is empty', async () => {
 
   responder = () => { throw new Error('should not be called') }
   await model.consolidateMemory()
-  assert.ok(!existsSync(join(process.env.LLM_DATA_PATH!, 'memory.txt')))
+  assert.ok(!existsSync(dailyFile(warsawYmd(new Date()))))
 })
 
 test('consolidateMemory excludes downvoted answers from the transcript', async () => {
@@ -186,9 +188,9 @@ test('consolidateMemory distills highly-rated answers with a ⭐ marker and dele
   assert.ok(req.body.prompt.includes('⭐ highly-rated answer: Chucha: great answer!'), 'upvoted answer starred in the transcript')
   assert.ok(req.body.prompt.includes('Bob: tell me a fact'))
 
-  const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
+  const memory = readFileSync(dailyFile(warsawYmd(new Date())), 'utf8')
   assert.ok(memory.includes('great answer noted'))
-  assert.equal(conversationStore.getAllThreads().size, 0, 'all rows deleted — memory.txt is the archive')
+  assert.equal(conversationStore.getAllThreads().size, 0, 'all rows deleted — the memory files are the archive')
 
   // second run: DB is empty → no LLM call
   const before = captured.length
@@ -224,12 +226,12 @@ test('consolidateMemory LLM failure leaves DB un-cleared, memory untouched, queu
   await assert.rejects(() => model.consolidateMemory())
 
   assert.equal(conversationStore.getAllThreads().size, 1, 'rows survive the failed run')
-  assert.ok(!existsSync(join(process.env.LLM_DATA_PATH!, 'memory.txt')), 'no memory written on failure')
+  assert.ok(!existsSync(dailyFile(warsawYmd(new Date()))), 'no memory written on failure')
 
   // the single-flight queue is not wedged — the next run works
   responder = () => 'recovered notes'
   await model.consolidateMemory()
-  assert.ok(readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8').includes('recovered notes'))
+  assert.ok(readFileSync(dailyFile(warsawYmd(new Date())), 'utf8').includes('recovered notes'))
 })
 
 function allRows (): any[] {
@@ -287,33 +289,56 @@ test('promoted rows are excluded from the live chat prompt', async () => {
   assert.ok(!req.body.prompt.includes('Chucha: archived gem'), 'promoted row not in live prompt')
 })
 
-test('appendMemory auto-compresses when memory.txt exceeds the size limit', async () => {
+test('appendMemory appends to the current daily file without an LLM call', async () => {
   reset()
   const model = await makeModel()
 
-  // Pre-fill memory.txt past the 10KB limit
-  writeFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'x'.repeat(12_000) + '\n')
-
-  responder = () => 'compressed notes here' // compressMemoryFile call
-  await model.appendMemory('new fact: chucha is a bot')
-
-  const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
-  assert.ok(memory.includes('compressed notes here'))
-  assert.ok(memory.includes('new fact: chucha is a bot'))
-  assert.ok(!memory.includes('x'.repeat(100)), 'old bloated content gone')
-})
-
-test('appendMemory does not compress when under the limit', async () => {
-  reset()
-  const model = await makeModel()
-
-  writeFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'old note\n')
+  const ymd = warsawYmd(new Date())
+  ensureLayout()
+  writeFileSync(dailyFile(ymd), 'old note\n')
   responder = () => { throw new Error('should not be called') }
   await model.appendMemory('another note')
 
-  const memory = readFileSync(join(process.env.LLM_DATA_PATH!, 'memory.txt'), 'utf8')
+  const memory = readFileSync(dailyFile(ymd), 'utf8')
   assert.ok(memory.includes('old note'))
   assert.ok(memory.includes('another note'))
+})
+
+test('promoteMemory merges a complete week of dailies into the weekly file and deletes them', async () => {
+  reset()
+  const model = await makeModel()
+
+  // A week that is fully in the past: the one containing "14 days ago" (always complete).
+  const past = new Date()
+  past.setDate(past.getDate() - 14)
+  const wk = isoWeekKeyOfYmd(warsawYmd(past))
+  const days = ymdsOfIsoWeek(wk)
+  ensureLayout()
+  for (const d of days) writeFileSync(dailyFile(d), `fact from ${d}\n`)
+
+  responder = () => 'merged week: all facts kept'
+  await model.promoteMemory()
+
+  assert.ok(existsSync(weeklyFile(wk)), 'weekly file written')
+  assert.ok(readFileSync(weeklyFile(wk), 'utf8').includes('merged week: all facts kept'))
+  for (const d of days) assert.ok(!existsSync(dailyFile(d)), `daily ${d} deleted after merge`)
+})
+
+test('promoteMemory LLM failure keeps the input dailies (retried on the next run)', async () => {
+  reset()
+  const model = await makeModel()
+
+  const past = new Date()
+  past.setDate(past.getDate() - 14)
+  const wk = isoWeekKeyOfYmd(warsawYmd(past))
+  const days = ymdsOfIsoWeek(wk)
+  ensureLayout()
+  for (const d of days) writeFileSync(dailyFile(d), `fact from ${d}\n`)
+
+  responder = () => { throw new Error('LLM down') }
+  await assert.rejects(() => model.promoteMemory())
+  for (const d of days) assert.ok(existsSync(dailyFile(d)), `daily ${d} survives the failed merge`)
+  assert.ok(!existsSync(weeklyFile(wk)), 'no weekly file on failure')
 })
 
 test('stop array always includes the thinking tags', async () => {

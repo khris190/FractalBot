@@ -1,16 +1,16 @@
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import conversationStore from '../db/conversationStore'
+import { loadTieredMemory } from './memoryPyramid'
 
 const llmPath = process.env.LLM_DATA_PATH ?? '/app/data/LLM'
 export const PROMPT_FILE = join(llmPath, 'prompt.txt')
-const MEMORY_FILE = join(llmPath, 'memory.txt')
 
+// Tiered pyramid (memory/{daily,weekly,monthly,yearly} + legacy) — see memoryPyramid.ts.
 export function loadMemory (): string {
-  if (!existsSync(MEMORY_FILE)) return ''
-  const content = readFileSync(MEMORY_FILE, 'utf8').trim()
+  const content = loadTieredMemory()
   return content
-    ? `\nLong-term memory (compressed notes from past conversations):\n${content}\n`
+    ? `\nLong-term memory (tiered notes, most recent first):\n${content}\n`
     : ''
 }
 

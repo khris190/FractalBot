@@ -1,17 +1,15 @@
-import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import env from '../env'
 import ILogger from '../logger/ILogger'
 import getLogger from '../logger/getLogger'
 import conversationStore from '../db/conversationStore'
 import { createBackend } from './backendFactory'
 import { loadMemory, buildPrompt } from './prompt'
+import { ensureLayout, dailyFile, warsawYmd, nextPromotionUnit, PromotionUnit } from './memoryPyramid'
 
-const MEMORY_FILE = join(env.LLM_DATA_PATH, 'memory.txt')
-const MEMORY_TMP_FILE = join(env.LLM_DATA_PATH, 'memoryTMP.txt')
 const HISTORY_FILE = join(env.LLM_DATA_PATH, 'history.txt')
 
-const MEMORY_MAX_SIZE = 10_000
 const MAX_ATTEMPTS = 5
 const THINKING_STOP_STRINGS = ['<think>', '</think>']
 
@@ -134,8 +132,9 @@ export default class Model {
     })
   }
 
-  // Distill short-term conversations into long-term notes via LLM (slow) and append to memory.txt,
-  // then delete ALL rows: memory.txt IS the archive, the DB keeps nothing.
+  // Distill short-term conversations into long-term notes via LLM (slow) and append them to the
+  // daily file of the day the conversations happened (tiered pyramid — see memoryPyramid.ts),
+  // then delete ALL rows: the memory files ARE the archive, the DB keeps nothing.
   // Highly-rated answers (upvotes > downvotes, or leftovers flagged promoted by an earlier run)
   // get a ⭐ marker so the LLM weighs them when writing the notes.
   // Downvoted answers are distilled nowhere and simply deleted. If the LLM call fails, the rows
@@ -146,8 +145,15 @@ export default class Model {
       if (allThreads.size === 0) return
 
       let transcript = ''
+      let newestRow: Date | null = null
       for (const [threadId, turns] of allThreads) {
         const kept = turns.filter((t) => !(t.role === 'assistant' && t.downvotes > t.upvotes))
+        for (const t of kept) {
+          // sqlite current_timestamp = 'YYYY-MM-DD HH:MM:SS' UTC — the daily file is dated by the
+          // conversation, not by when the distill runs (the 05:00 sleep distills the previous day).
+          const created = new Date(t.createdAt.replace(' ', 'T') + 'Z')
+          if (!newestRow || created > newestRow) newestRow = created
+        }
         if (kept.length > 0) {
           transcript += `Conversation ${threadId}:\n${kept
             .map((t) => (t.promoted || (t.role === 'assistant' && t.upvotes > t.downvotes))
@@ -163,38 +169,54 @@ export default class Model {
       const notes = await this.complete(compressionPrompt, 1000, 1.0, ['\n'], undefined, undefined, true)
 
       if (notes) {
-        await this.doAppendMemory(notes)
+        await this.doAppendMemory(notes, warsawYmd(newestRow ?? new Date()))
       }
       conversationStore.clearAll()
     })
   }
 
   async appendMemory (notes: string): Promise<void> {
-    return await this.enqueue(() => this.doAppendMemory(notes))
+    return await this.enqueue(async () => {
+      this.doAppendMemory(notes, warsawYmd(new Date()))
+    })
   }
 
-  private async doAppendMemory (notes: string): Promise<void> {
-    let existing = existsSync(MEMORY_FILE)
-      ? readFileSync(MEMORY_FILE, 'utf8')
-      : ''
+  private doAppendMemory (notes: string, ymd: string): void {
+    ensureLayout()
+    writeFileSync(dailyFile(ymd), notes.trim() + '\n', { flag: 'a+' })
+  }
 
-    const candidate = existing + notes.trim() + '\n'
-    if (Buffer.byteLength(candidate) > MEMORY_MAX_SIZE && existing.length > 0) {
-      await this.compressMemoryFile()
-      existing = readFileSync(MEMORY_FILE, 'utf8')
+  // Promote complete calendar units one tier up: week → month → year (see memoryPyramid.ts).
+  // One unit per LLM call; input files are deleted only after the merged file is written, so a
+  // failed merge keeps its inputs and retries on the next run. Loops until nothing is pending.
+  async promoteMemory (): Promise<void> {
+    return await this.enqueue(async () => {
+      for (;;) {
+        const unit = nextPromotionUnit(new Date())
+        if (!unit) return
+        await this.mergeUnit(unit)
+      }
+    })
+  }
+
+  private async mergeUnit (unit: PromotionUnit): Promise<void> {
+    const input = unit.inputs
+      .map((f) => `## ${basename(f, '.txt')}\n${readFileSync(f, 'utf8').trim()}`)
+      .join('\n\n')
+    let prompt = `Merge these ${unit.tier} notes into a single set of notes. Keep ALL facts and attribute statements to their speaker; mostly neutral and factual. The result must fit in at most ${unit.capLines} lines.\n\n${input}\n\nMerged notes:`
+    let merged = (await this.complete(prompt, 1000, 1.0, ['\n'], undefined, undefined, true)).trim()
+
+    if (merged.split('\n').length > unit.capLines) {
+      // One stricter pass — the first merge sometimes overruns the cap.
+      prompt = `Compress the following notes into at most ${unit.capLines} lines. Keep every fact and the speaker attribution.\n\n${merged}\n\nCompressed notes:`
+      merged = (await this.complete(prompt, 1000, 1.0, ['\n'], undefined, undefined, true)).trim()
+      if (merged.split('\n').length > unit.capLines) {
+        this.logger.warn(`merged ${unit.tier} notes still exceed ${unit.capLines} lines — writing anyway`)
+      }
     }
 
-    writeFileSync(MEMORY_TMP_FILE, existing + notes.trim() + '\n')
-    renameSync(MEMORY_TMP_FILE, MEMORY_FILE)
-  }
-
-  private async compressMemoryFile (): Promise<void> {
-    const content = readFileSync(MEMORY_FILE, 'utf8')
-    const compressionPrompt = `Compress these conversation notes into fewer, more concise lines. Keep all important facts.\n\n${content}\n\nCompressed notes:`
-
-    const compressed = await this.complete(compressionPrompt, 2000, 1.0, ['\n'], undefined, undefined, true)
-
-    writeFileSync(MEMORY_TMP_FILE, compressed + '\n')
-    renameSync(MEMORY_TMP_FILE, MEMORY_FILE)
+    writeFileSync(unit.target, merged + '\n')
+    for (const f of unit.inputs) unlinkSync(f)
+    this.logger.info(`memory: merged ${unit.inputs.length} ${unit.inputs.map((f) => basename(f)).join(', ')} → ${basename(unit.target)}`)
   }
 }

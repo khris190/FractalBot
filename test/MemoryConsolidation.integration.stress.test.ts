@@ -11,8 +11,8 @@
  * Hard-asserts shape only (non-empty notes, DB cleared, downvoted content excluded
  * from the transcript each cycle); SEMANTIC survival is REPORTED for manual review:
  * per-round fact-hit lists + a CARRY-OVER report re-checking round A's tokens in
- * round B's NEWLY APPENDED notes only (prefix-diff on memory.txt; if the 10KB cap
- * triggered compression, falls back to a whole-file check, flagged in the output).
+ * round B's NEWLY APPENDED notes only (prefix-diff on the daily file — consolidation
+ * is a pure append, so the tail IS the new cycle's notes).
  */
 import { test, before } from 'node:test'
 import assert from 'node:assert/strict'
@@ -52,6 +52,7 @@ const realFetch = globalThis.fetch.bind(globalThis)
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
+const { dailyFile, warsawYmd } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
 
 // Tests don't run drizzle migrations — create the table by hand (same as unit tests).
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
@@ -264,8 +265,8 @@ test('stress A: long multi-person consolidation writes non-empty notes, clears t
   const req = captured[captured.length - 1]
   assert.ok(!JSON.stringify(req.body).includes('wet planks'), 'downvoted answer leaked into the transcript')
 
-  const notesPath = join(process.env.LLM_DATA_PATH!, 'memory.txt')
-  assert.ok(existsSync(notesPath), 'memory.txt should exist after consolidation')
+  const notesPath = dailyFile(warsawYmd(new Date()))
+  assert.ok(existsSync(notesPath), 'daily notes file should exist after consolidation')
   const notes = readFileSync(notesPath, 'utf8').trim()
   assert.ok(notes !== '', `expected non-empty distilled notes, got: ${JSON.stringify(notes)}`)
 
@@ -278,9 +279,9 @@ test('stress A: long multi-person consolidation writes non-empty notes, clears t
 })
 
 test('stress B: second long consolidation merges existing memory (carry-over), clears the DB, excludes the downvote', async () => {
-  const notesPath = join(process.env.LLM_DATA_PATH!, 'memory.txt')
+  const notesPath = dailyFile(warsawYmd(new Date()))
   const before = existsSync(notesPath) ? readFileSync(notesPath, 'utf8') : ''
-  assert.ok(before !== '', 'round B requires round A notes in memory.txt — run round A first')
+  assert.ok(before !== '', 'round B requires round A notes in the daily file — run round A first')
 
   seed(THREAD_B, SEED_B, 'b')
   console.log(`round B seeded: ${SEED_B.length} turns (${SEED_B.reduce((n, t) => n + t.content.length, 0)} chars)`)
@@ -293,19 +294,19 @@ test('stress B: second long consolidation merges existing memory (carry-over), c
   assert.ok(!JSON.stringify(req.body).includes('rectangular dogs'), 'downvoted answer leaked into the round B transcript')
 
   const after = readFileSync(notesPath, 'utf8').trim()
-  assert.ok(after !== '', 'memory.txt must be non-empty after the second consolidation')
+  assert.ok(after !== '', 'daily notes file must be non-empty after the second consolidation')
 
   assert.equal(conversationStore.getAllThreads().size, 0, 'DB must be fully cleared after the second consolidation')
 
-  // The new notes are the appended tail (doAppendMemory keeps the old file as a prefix) unless
-  // the 10KB cap triggered a compression rewrite — then check the whole (compressed) file.
-  const compressed = !after.startsWith(before.trim())
-  const newNotes = compressed ? after : after.slice(before.length).trim()
-  console.log(`\n=== ROUND B NEW NOTES (${SEED_B.length} turns in, ${elapsed}s) — manual review [${compressed ? 'compressed whole file' : 'appended tail'}] ===`)
+  // Consolidation is a pure append (no more write-time compression), so the new cycle's
+  // notes are exactly the tail past round A's content.
+  assert.ok(after.startsWith(before.trim()), 'round B notes must be appended onto round A notes')
+  const newNotes = after.slice(before.length).trim()
+  console.log(`\n=== ROUND B NEW NOTES (${SEED_B.length} turns in, ${elapsed}s) — manual review [appended tail] ===`)
   console.log(newNotes)
-  factReport(`FACT-HIT REPORT — ROUND B NEW FACTS${compressed ? ' (whole file)' : ''}`, newNotes, PLANTED_FACTS_B)
+  factReport('FACT-HIT REPORT — ROUND B NEW FACTS', newNotes, PLANTED_FACTS_B)
   // CARRY-OVER: round A's facts must survive INTO the second cycle's new notes, not merely
   // persist as stale appended text from cycle one.
-  factReport(`CARRY-OVER — ROUND A FACTS IN ROUND B NOTES${compressed ? ' (whole file)' : ''}`, newNotes, PLANTED_FACTS_A)
+  factReport('CARRY-OVER — ROUND A FACTS IN ROUND B NOTES', newNotes, PLANTED_FACTS_A)
   console.log(`\nnotes file: ${notesPath}\n`)
 })

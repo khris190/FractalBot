@@ -9,6 +9,8 @@ export interface Turn {
   upvotes: number
   downvotes: number
   promoted: boolean
+  // 'YYYY-MM-DD HH:MM:SS' UTC (sqlite current_timestamp) — e.g. dates the daily memory file
+  createdAt: string
 }
 
 const store = {
@@ -40,7 +42,7 @@ const store = {
     const rows = db.select().from(ConversationTurn)
       .where(and(eq(ConversationTurn.threadId, threadId), eq(ConversationTurn.promoted, 0)))
       .orderBy(asc(ConversationTurn.id)).all()
-    return rows.map(r => ({ messageId: r.messageId ?? null, role: r.role, content: r.content, upvotes: r.upvotes, downvotes: r.downvotes, promoted: !!r.promoted }))
+    return rows.map(r => ({ messageId: r.messageId ?? null, role: r.role, content: r.content, upvotes: r.upvotes, downvotes: r.downvotes, promoted: !!r.promoted, createdAt: r.createdAt }))
   },
 
   getAllThreads (): Map<string, Turn[]> {
@@ -48,7 +50,7 @@ const store = {
     const map = new Map<string, Turn[]>()
     for (const row of rows) {
       if (!map.has(row.threadId)) map.set(row.threadId, [])
-      map.get(row.threadId)!.push({ messageId: row.messageId ?? null, role: row.role, content: row.content, upvotes: row.upvotes, downvotes: row.downvotes, promoted: !!row.promoted })
+      map.get(row.threadId)!.push({ messageId: row.messageId ?? null, role: row.role, content: row.content, upvotes: row.upvotes, downvotes: row.downvotes, promoted: !!row.promoted, createdAt: row.createdAt })
     }
     return map
   },

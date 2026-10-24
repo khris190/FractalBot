@@ -38,8 +38,9 @@ test('addTurn stores a turn and getThread returns it in insertion order', () => 
   conversationStore.addTurn('t1', null, 'assistant', 'Chucha: hello')
   const turns = conversationStore.getThread('t1')
   assert.equal(turns.length, 2)
-  assert.deepEqual(turns[0], { messageId: 'm1', role: 'user', content: 'Alice: hi', upvotes: 0, downvotes: 0, promoted: false })
-  assert.deepEqual(turns[1], { messageId: null, role: 'assistant', content: 'Chucha: hello', upvotes: 0, downvotes: 0, promoted: false })
+  assert.deepEqual(turns[0], { messageId: 'm1', role: 'user', content: 'Alice: hi', upvotes: 0, downvotes: 0, promoted: false, createdAt: turns[0].createdAt })
+  assert.deepEqual(turns[1], { messageId: null, role: 'assistant', content: 'Chucha: hello', upvotes: 0, downvotes: 0, promoted: false, createdAt: turns[1].createdAt })
+  assert.match(turns[0].createdAt!, /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/, 'createdAt is the sqlite UTC timestamp')
 })
 
 test('addTurn dedupes by messageId (no duplicate rows)', () => {

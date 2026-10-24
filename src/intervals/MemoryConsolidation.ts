@@ -32,8 +32,11 @@ class MemoryConsolidationInterval extends BaseInterval {
     logger.info('Scheduled memory consolidation starting')
     try {
       const model = LLMPingResponseHandler.model
-      // No busy-wait needed — consolidateMemory runs through the Model's single-flight queue.
+      // No busy-wait needed — both runs go through the Model's single-flight queue.
       await model.consolidateMemory()
+      // Promote complete calendar units up the pyramid (week → month → year); no-op when
+      // nothing is pending. Inputs of a failed merge are kept and retried on the next sleep.
+      await model.promoteMemory()
       logger.info('Scheduled memory consolidation done')
     } catch (e) {
       // Consolidation is already a no-op when there's nothing to compress, so this only
