@@ -4,10 +4,11 @@ import { status } from '../utils/status'
 import ILogger from '../utils/logger/ILogger'
 import BaseInterval from './BaseInterval'
 
-// Fires the same consolidation as /remember once a day at 05:00 Europe/Warsaw.
-// If the bot was down when 05:00 passed, it simply waits for the next day.
-// The host timezone is irrelevant — time is computed in Warsaw explicitly, so this
-// stays correct across DST without any manual offset config.
+// Fires the same consolidation as /remember once a day — on the first tick at or after
+// 05:00 Europe/Warsaw, so a drifted or missed tick can't skip the day. Boot before 05:00 →
+// consolidates at 05:00 the same day; boot at/after 05:00 → waits for the next day (no
+// catch-up run on a late boot). The host timezone is irrelevant — time is computed in
+// Warsaw explicitly, so this stays correct across DST without any manual offset config.
 const TIMEZONE = 'Europe/Warsaw'
 const TARGET_HM = '05:00'
 
@@ -15,19 +16,35 @@ function warsawToday (now: Date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
 }
 
+function warsawHm (now: Date) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: TIMEZONE, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(now)
+}
+
+// Boot-time gate (evaluated once per process): started at/after today's target → today is
+// already spent, wait for tomorrow; started before → today's first tick at/after the target
+// fires (e.g. a 02:00 boot consolidates at 05:00). Exported so tests can drive it with
+// deterministic instants instead of the real boot clock.
+export function initialLastRunDate (now: Date) {
+  return warsawHm(now) >= TARGET_HM ? warsawToday(now) : ''
+}
+
 class MemoryConsolidationInterval extends BaseInterval {
-  // Initialize to today so we skip the boot-day and only fire on future days.
-  lastRunDate = warsawToday(new Date())
+  // Boot gate (see initialLastRunDate): '' if we booted before today's target (today's
+  // 05:00 tick may fire), today's date if we booted at/after it (wait for tomorrow). After
+  // the first run it holds the run day, which `lastRunDate === today` uses as the lock.
+  lastRunDate = initialLastRunDate(new Date())
 
   // `now` is injectable so tests can drive the schedule deterministically.
   async run (self: Client, logger: ILogger, now: Date = new Date()) {
     // HH:MM and YYYY-MM-DD in Warsaw. hourCycle 'h23' + en-CA give zero-padded values,
     // so lexicographic compare of HH:MM is chronological.
-    const hm = new Intl.DateTimeFormat('en-GB', { timeZone: TIMEZONE, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(now)
+    const hm = warsawHm(now)
     const today = warsawToday(now)
 
     if (this.lastRunDate === today) return
-    if (hm !== TARGET_HM) return
+    // First tick at or after the target time fires; lastRunDate (above) prevents a second run
+    // the same day. An exact match would skip the day entirely if a tick drifted past 05:00.
+    if (hm < TARGET_HM) return
     this.lastRunDate = today
 
     logger.info('Scheduled memory consolidation starting')

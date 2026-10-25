@@ -17,7 +17,7 @@ require.cache[require.resolve('../src/Client')] = {
   exports: { default: { client: { user: { id: '100', displayName: 'Chucha', setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
 } as any
 
-const { default: interval } = require('../src/intervals/MemoryConsolidation') as typeof import('../src/intervals/MemoryConsolidation')
+const { default: interval, initialLastRunDate } = require('../src/intervals/MemoryConsolidation') as typeof import('../src/intervals/MemoryConsolidation')
 
 interface ModelStub {
   busy: boolean
@@ -63,8 +63,11 @@ function makeLogger () {
 }
 
 // Fixed winter-2026 dates: Warsaw is UTC+1, so 04:00Z = 05:00 Warsaw.
+const W0200 = new Date('2026-01-02T01:00:00Z')
+const W0459 = new Date('2026-01-02T03:59:00Z')
 const W0500 = new Date('2026-01-02T04:00:00Z')
 const W0501 = new Date('2026-01-02T04:01:00Z')
+const W0600 = new Date('2026-01-02T05:00:00Z')
 const W1200 = new Date('2026-01-02T11:00:00Z')
 const WNEXT = new Date('2026-01-03T04:00:00Z')
 
@@ -92,12 +95,22 @@ test('reports dreaming activity while consolidating, idle after', async () => {
   assert.deepEqual(activities, ['🌙 dreaming', 'Balala'])
 })
 
-test('does nothing off-target (05:01)', async () => {
+test('does nothing before the target (04:59)', async () => {
   const { stub, logger } = setup()
-  await interval.run({} as any, logger, W0501)
+  await interval.run({} as any, logger, W0459)
   assert.equal(stub.calls, 0)
   assert.equal(stub.promoteCalls, 0)
   assert.equal(interval.lastRunDate, '2026-01-01')
+})
+
+test('fires on the first tick after the target (05:01) and not again that day', async () => {
+  const { stub, logger } = setup()
+  await interval.run({} as any, logger, W0501)
+  assert.equal(stub.calls, 1)
+  assert.equal(stub.promoteCalls, 1)
+  assert.equal(interval.lastRunDate, '2026-01-02')
+  await interval.run({} as any, logger, W1200) // later the same day — already ran
+  assert.equal(stub.calls, 1)
 })
 
 test('fires once per Warsaw day', async () => {
@@ -116,11 +129,36 @@ test('fires again the next Warsaw day', async () => {
   assert.equal(interval.lastRunDate, '2026-01-03')
 })
 
-test('skips the boot day', async () => {
-  const { stub, logger } = setup('2026-01-02') // lastRunDate == Warsaw today at boot
+test('does not re-run on a day that already ran', async () => {
+  const { stub, logger } = setup('2026-01-02') // lastRunDate == Warsaw today
   await interval.run({} as any, logger, W0500)
   assert.equal(stub.calls, 0)
   assert.equal(stub.promoteCalls, 0)
+})
+
+test('boot gate: before target → today open; at/after target → today spent', () => {
+  assert.equal(initialLastRunDate(W0200), '', '02:00 boot → today not spent')
+  assert.equal(initialLastRunDate(W0459), '', '04:59 boot → today not spent')
+  assert.equal(initialLastRunDate(W0500), '2026-01-02', '05:00 boot → today spent')
+  assert.equal(initialLastRunDate(W0600), '2026-01-02', '06:00 boot → today spent')
+})
+
+test('a boot before the target fires at 05:00 on the boot day', async () => {
+  const { stub, logger } = setup(initialLastRunDate(W0200))
+  await interval.run({} as any, logger, W0500)
+  assert.equal(stub.calls, 1)
+  assert.equal(stub.promoteCalls, 1)
+  assert.equal(interval.lastRunDate, '2026-01-02')
+})
+
+test('boots after the target and waits for the next day', async () => {
+  const { stub, logger } = setup(initialLastRunDate(W0600)) // today's date — today spent
+  await interval.run({} as any, logger, W0600)
+  assert.equal(stub.calls, 0)
+  assert.equal(stub.promoteCalls, 0)
+  await interval.run({} as any, logger, WNEXT) // next day 05:00
+  assert.equal(stub.calls, 1)
+  assert.equal(interval.lastRunDate, '2026-01-03')
 })
 
 test('calls consolidateMemory even when model.busy (the Model queue serializes)', async () => {
