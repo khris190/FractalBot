@@ -37,7 +37,6 @@ const realFetch = globalThis.fetch.bind(globalThis)
   return realFetch(url, init)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../../src/utils/AI/Model') as typeof import('../../src/utils/AI/Model')).default
 
 let model: InstanceType<typeof Model>

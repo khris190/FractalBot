@@ -17,7 +17,7 @@ const THINKING_STOP_STRINGS = ['<think>', '</think>']
 interface LLMBackend {
   request(
     prompt: string,
-    n_predict: number,
+    nPredict: number,
     temperature: number,
     stop: string[],
     threadId?: string,
@@ -49,8 +49,8 @@ export default class Model {
   private enqueue<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this.#queue
     let release!: () => void
-    this.#queue = new Promise<void>((res) => {
-      release = res
+    this.#queue = new Promise<void>((resolve) => {
+      release = resolve
     })
 
     return prev
@@ -69,7 +69,7 @@ export default class Model {
 
   private async complete (
     prompt: string,
-    n_predict = 100,
+    nPredict = 100,
     temperature = 1.0,
     extraStop: string[] = ['\n'],
     threadId?: string,
@@ -86,7 +86,7 @@ export default class Model {
         try {
           content = await this.backend.request(
             prompt,
-            n_predict,
+            nPredict,
             temperature,
             stop,
             threadId,

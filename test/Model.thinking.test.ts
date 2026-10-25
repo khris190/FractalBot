@@ -17,7 +17,6 @@ process.env.LLM_THINKING = 'OFF' // env is normalized to lowercase
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -43,9 +42,8 @@ let responder: () => any = () => ({ choices: [{ message: { content: 'preload' } 
   return new Response(JSON.stringify(responder()), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 
 function reset () {
@@ -56,7 +54,7 @@ function reset () {
 
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
-  await new Promise(r => setTimeout(r, 30)) // let the constructor preload drain
+  await new Promise((resolve) => setTimeout(resolve, 30)) // let the constructor preload drain
   return model
 }
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -16,7 +16,6 @@ process.env.LLM_MODEL = 'chat-model'
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -48,11 +47,10 @@ let statuses: number[] = []
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const { stripChuchaPrefix, stripThinkPrefix, isThinkMessage } = require('../src/utils/AI/ChatCompletionBackend') as typeof import('../src/utils/AI/ChatCompletionBackend')
 
 function reset () {
@@ -68,7 +66,7 @@ function reset () {
 
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
-  await new Promise(r => setTimeout(r, 30))
+  await new Promise((resolve) => setTimeout(resolve, 30))
   return model
 }
 
@@ -345,7 +343,7 @@ test('chat mode: concurrency is serialized (only one request at a time)', async 
     active++
     maxActive = Math.max(maxActive, active)
     try {
-      await new Promise(r => setTimeout(r, 20))
+      await new Promise((resolve) => setTimeout(resolve, 20))
       return await origFetch(url, init)
     } finally {
       active--

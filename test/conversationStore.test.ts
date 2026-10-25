@@ -10,9 +10,8 @@ process.env.DOTENV_CONFIG_PATH = '/nonexistent/.env'
 process.env.DATA_PATH = dir
 process.env.DB_FILE = 'test.sqlite'
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 
 // Same DDL as migration 0003 — keeps the test independent of drizzle-kit state.

@@ -11,11 +11,12 @@ require.cache[handlerPath] = { id: handlerPath, filename: handlerPath, loaded: t
 // load the real Discord client + file loggers.
 const activities: string[] = []
 require.cache[require.resolve('../src/Client')] = {
-  id: 'mock-client', filename: 'mock-client', loaded: true,
+  id: 'mock-client',
+  filename: 'mock-client',
+  loaded: true,
   exports: { default: { client: { user: { id: '100', displayName: 'Chucha', setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
 } as any
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: interval } = require('../src/intervals/MemoryConsolidation') as typeof import('../src/intervals/MemoryConsolidation')
 
 interface ModelStub {
@@ -85,7 +86,7 @@ test('fires consolidateMemory exactly at 05:00 Warsaw', async () => {
 })
 
 test('reports dreaming activity while consolidating, idle after', async () => {
-  const { stub, logger } = setup()
+  const { logger } = setup()
   activities.length = 0
   await interval.run({} as any, logger, W0500)
   assert.deepEqual(activities, ['🌙 dreaming', 'Balala'])

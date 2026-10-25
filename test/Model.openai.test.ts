@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -16,7 +16,6 @@ process.env.LLM_MODEL = 'unsloth/qwen3.8-27b'
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -41,12 +40,11 @@ let responder: Responder = () => ({ content: 'preload' })
   return new Response(JSON.stringify(responder(body)), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
 
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
-  await new Promise(r => setTimeout(r, 30)) // let the constructor preload drain
+  await new Promise((resolve) => setTimeout(resolve, 30)) // let the constructor preload drain
   return model
 }
 
@@ -70,7 +68,9 @@ test('openai mode parses choices[0].text (the shape from the production log)', a
   captured = []
   // exact shape LM Studio returned in the crash report
   responder = () => ({
-    id: 'cmpl-qrrmvl0z4kl3mugpv5d8eo', object: 'text_completion', created: 1788284686,
+    id: 'cmpl-qrrmvl0z4kl3mugpv5d8eo',
+    object: 'text_completion',
+    created: 1788284686,
     model: 'unsloth/qwen3.8-27b',
     choices: [{ index: 0, text: " I'll just spew", logprobs: null, finish_reason: 'stop' }],
     usage: { prompt_tokens: 2804, completion_tokens: 6, total_tokens: 2810 },

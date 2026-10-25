@@ -14,9 +14,8 @@ mkdirSync(process.env.LLM_DATA_PATH!)
 
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
@@ -54,7 +53,6 @@ let forcedRawText: string | null = null
   return new Response(raw, { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
 const { ensureLayout, dailyFile, distillFile, archiveFile, warsawYmd, isoWeekKeyOfYmd, ymdsOfIsoWeek, weeklyFile } = require('../src/utils/AI/memoryPyramid') as typeof import('../src/utils/AI/memoryPyramid')
 

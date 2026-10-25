@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // Point env at throwaway dirs BEFORE requiring anything that reads it.
@@ -13,7 +13,6 @@ process.env.LLM_DATA_PATH = join(dir, 'LLM')
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -27,7 +26,6 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
 ); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
 
 // Stub fetch before module load: the handler's real Model fires a preload call on construction.
@@ -48,14 +46,18 @@ require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loa
 const BOT_ID = '100'
 const activities: string[] = []
 require.cache[require.resolve('../src/Client')] = {
-  id: 'mock-client', filename: 'mock-client', loaded: true,
+  id: 'mock-client',
+  filename: 'mock-client',
+  loaded: true,
   exports: { default: { client: { user: { id: BOT_ID, displayName: 'Chucha', setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
 } as any
 
 // Mock ReplyHelper — records replies instead of sleeping/sending.
 const replied: Array<{ type: number, content?: string }> = []
 require.cache[require.resolve('../src/utils/ReplyHelper')] = {
-  id: 'mock-replyhelper', filename: 'mock-replyhelper', loaded: true,
+  id: 'mock-replyhelper',
+  filename: 'mock-replyhelper',
+  loaded: true,
   exports: {
     default: { respond: (_msg: any, type: number, payload: any) => replied.push({ type, content: payload.content }) },
     ResponseType: { REPLY: 0, SAME_CHANNEL: 1, DELAY_REPLY: 2, DELAY_SAME_CHANNEL: 3 },
@@ -63,11 +65,10 @@ require.cache[require.resolve('../src/utils/ReplyHelper')] = {
   },
 } as any
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const handlerModule = require('../src/responses/LLMPingResponseHandler') as typeof import('../src/responses/LLMPingResponseHandler')
 const LLMPingResponseHandler = handlerModule.default
 const { MAX_IMAGE_SIZE } = handlerModule
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const { settings } = require('../src/settings')
 const { status } = require('../src/utils/status') as typeof import('../src/utils/status')
 
@@ -82,10 +83,15 @@ const defaultModelStub = () => ({
 ;(LLMPingResponseHandler as any).model = defaultModelStub()
 
 interface FakeMsg {
-  id: string; author: { id: string, displayName: string }; content: string; cleanContent: string
-  mentions: { users: any[] }; reference?: { messageId: string } | null
+  id: string;
+  author: { id: string, displayName: string };
+  content: string;
+  cleanContent: string
+  mentions: { users: any[] };
+  reference?: { messageId: string } | null
   attachments?: any
-  channel: any; reply: (payload: any) => Promise<{ id: string, react?: (e: string) => Promise<void> }>
+  channel: any;
+  reply: (payload: any) => Promise<{ id: string, react?: (e: string) => Promise<void> }>
 }
 
 const parents: Record<string, FakeMsg> = {}
@@ -171,7 +177,10 @@ test('admin ping replies and stores Chucha turn with the real reply messageId', 
   reset()
   const sentIds: string[] = []
   const msg = makeMessage({
-    id: 'c1', authorId: settings.ADMINS[0], content: '<@100> what is up', mentionChucha: true,
+    id: 'c1',
+    authorId: settings.ADMINS[0],
+    content: '<@100> what is up',
+    mentionChucha: true,
     replyTo: async () => { const id = `sent-${Date.now()}`; sentIds.push(id); return { id } },
   })
 
@@ -336,7 +345,10 @@ test('Chucha replies are seeded with 👍 and 👎 reactions', async () => {
   ;(LLMPingResponseHandler as any).model.chatWithChucha = (threadId?: string) => { chatCalls.push(threadId ?? ''); return Promise.resolve('rate me') }
   const reacted: string[] = []
   const msg = makeMessage({
-    id: 'f1', authorId: settings.ADMINS[0], content: '<@100> hi', mentionChucha: true,
+    id: 'f1',
+    authorId: settings.ADMINS[0],
+    content: '<@100> hi',
+    mentionChucha: true,
     replyTo: async () => ({ id: 'sent-f1', react: async (e: string) => { reacted.push(e); return {} } }),
   })
 

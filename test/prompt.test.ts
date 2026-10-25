@@ -12,7 +12,6 @@ process.env.LLM_DATA_PATH = join(dir, 'LLM')
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var- requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -26,9 +25,7 @@ db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`createdAt\` text DEFAULT (current_timestamp) NOT NULL
 ); CREATE UNIQUE INDEX IF NOT EXISTS \`conversationTurn_messageId_unique\` ON \`conversationTurn\` (\`messageId\`)`)
 
-// eslint-disable-next-line @typescript-eslint/no-var- requires
 const conversationStore = (require('../src/utils/db/conversationStore') as typeof import('../src/utils/db/conversationStore')).default
-// eslint-disable-next-line @typescript-eslint/no-var- requires
 const prompt = require('../src/utils/AI/prompt') as typeof import('../src/utils/AI/prompt')
 
 const reset = () => conversationStore.clearAll()

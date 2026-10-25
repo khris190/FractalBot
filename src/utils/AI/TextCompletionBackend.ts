@@ -11,7 +11,7 @@ export class TextCompletionBackend {
 
   async request (
     prompt: string,
-    n_predict: number,
+    nPredict: number,
     temperature: number,
     stop: string[],
     _threadId?: string,
@@ -26,7 +26,7 @@ export class TextCompletionBackend {
       ? ({
           model: env.LLM_MODEL,
           prompt,
-          max_tokens: n_predict,
+          max_tokens: nPredict,
           temperature,
           stop,
           // spec max (OpenAI range [-2, 2]) — keeps strong repetition suppression without 400-ing on strict servers
@@ -34,7 +34,7 @@ export class TextCompletionBackend {
         } as OpenAICompletionRequest)
       : ({
           prompt,
-          n_predict,
+          n_predict: nPredict,
           temperature,
           stop,
           // strong but sane (llama.cpp default is 1.1); 10.0 risked degraded generation

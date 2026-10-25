@@ -6,9 +6,8 @@ delete process.env.SIMILARITY_ENDPOINT
 delete process.env.SIMILARITY_THRESHOLD
 delete process.env.SIMILARITY_TRESHOLD
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const SimilarityChecker = (require('../src/utils/SimilarityChecker') as typeof import('../src/utils/SimilarityChecker')).default
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const { default: env } = require('../src/utils/env')
 
 interface Captured { url: string, body: any }

@@ -20,7 +20,6 @@ process.env.LLM_TIMEOUT_MS = '50'
 mkdirSync(process.env.LLM_DATA_PATH!)
 writeFileSync(join(process.env.LLM_DATA_PATH!, 'prompt.txt'), 'You are Chucha.\n')
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { default: db } = require('../src/utils/db/db') as typeof import('../src/utils/db/db')
 db.$client.exec(`CREATE TABLE IF NOT EXISTS \`conversationTurn\` (
   \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -50,13 +49,12 @@ require.cache[dailyRollPath] = { id: dailyRollPath, filename: dailyRollPath, loa
   })
 })
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
 
 test('hung requests are aborted after LLM_TIMEOUT_MS, retried, rejected; queue stays usable', async () => {
   const model = new Model()
   // constructor preload: 5 × 50ms of timeouts, swallowed by the constructor's catch
-  await new Promise(r => setTimeout(r, 400))
+  await new Promise((resolve) => setTimeout(resolve, 400))
 
   await assert.rejects(model.chatWithChucha(), /request failed after 5 attempts/)
 

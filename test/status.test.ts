@@ -4,11 +4,12 @@ import assert from 'node:assert/strict'
 // Mock Client BEFORE requiring status — no real Discord client or file loggers in tests.
 const activities: string[] = []
 require.cache[require.resolve('../src/Client')] = {
-  id: 'mock-client', filename: 'mock-client', loaded: true,
+  id: 'mock-client',
+  filename: 'mock-client',
+  loaded: true,
   exports: { default: { client: { user: { setActivity: (a: string) => activities.push(a) } } }, __esModule: true },
 } as any
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { status } = require('../src/utils/status') as typeof import('../src/utils/status')
 
 test('dreaming wins over answering and holds until the last one ends', () => {

@@ -29,12 +29,11 @@ let responder: () => any = () => ({ choices: [{ message: { content: 'preload' } 
   return new Response(JSON.stringify(responder()), { status: 200, headers: { 'Content-Type': 'application/json' } })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Model = (require('../src/utils/AI/Model') as typeof import('../src/utils/AI/Model')).default
 
 async function makeModel (): Promise<InstanceType<typeof Model>> {
   const model = new Model()
-  await new Promise(r => setTimeout(r, 30)) // let the constructor preload drain
+  await new Promise((resolve) => setTimeout(resolve, 30)) // let the constructor preload drain
   return model
 }
 
