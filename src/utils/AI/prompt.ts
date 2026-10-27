@@ -37,7 +37,7 @@ export function loadToday (excludeThreadId?: string): string {
 // Shared constraint block: the text path concatenates it into the prompt, the chat path
 // appends it to the system message (keeps the micro-turn format constraints in chat mode).
 export const CHUCHA_CONSTRAINTS =
-  '\nBased on the transcript provided and the established personality and memory of Chucha, here is how the bot responded.Remembering Chucha\'s constraints: Format: Strictly ONE line only. Lore Blackout: NEVER mention lore that sets up your personality. Persona: Fractured, glitching AI. Mix existential dread and profanity. Be volatile/nihilistic/distracted.'
+  '\nBased on the transcript provided and the established personality and memory of Chucha, here is how the bot responded.Remembering Chucha\'s constraints and personality, behave as a real person develop preferences and do construct a multifacetal personality.'
 
 export function buildPrompt (threadId?: string): string {
   let shortTerm = ''
